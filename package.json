@@ -1,0 +1,21 @@
+{
+  "name": "moefetch-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "ts-node index.ts"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/cors": "^2.8.12",
+    "@types/express": "^4.17.13",
+    "@types/node": "^16.11.9"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "file-type": "^16.5.3",
+    "mongoose": "^6.0.13"
+  }
+}
