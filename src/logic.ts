@@ -17,7 +17,7 @@ const shit = fs.readdirSync("../anime test/importedPics");
 console.log(`../anime test/importedPics/${shit[2]}`);
 
 
-async function compareImgSizes(img1: string, img2: string) {
+export async function compareImgSizes(img1: string, img2: string) {
     const img1Res = getImageResolution(img1);
     const img2Res = getImageResolution(img2);
     
@@ -32,7 +32,7 @@ async function compareImgSizes(img1: string, img2: string) {
  * @param image path string to file / could take in a url aswell but idk
  */
 
-function getImageResolution(image: string) {
+ export function getImageResolution(image: string) {
   let imageProps: IImageProps;
   const resPromise: Promise<IImageProps> = new Promise((resolve, reject) => {
     if (~image.search(/^https?:\/\//)) {
@@ -107,7 +107,7 @@ function getImageResolution(image: string) {
  * @param id pixiv post id to get data of
  */
 
-async function getPixivImageData (id: number) {
+export async function getPixivImageData (id: number) {
   const response = await request(`https://www.pixiv.net/en/artworks/${id}`);   
   // console.log(response.data)
   const $ = cheerio.load(response.data);
@@ -120,7 +120,7 @@ async function getPixivImageData (id: number) {
   }
 }
 
-function request (element: string) {
+export function request (element: string) {
   return axios({
       url: element,
       headers: {

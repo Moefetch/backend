@@ -10,7 +10,7 @@ interface ISettings {
 
 /**
  * Creates a settings JSON and loads it from the same folder the executable is in
- * stolen from Taku by geoxor 
+ * stolen from Taku by Geoxor 
  */
 class Settings implements ISettings{
     public port: number;
@@ -25,7 +25,7 @@ class Settings implements ISettings{
         ) as ISettings;
         this.ip = !!ip ? ip : "";
         this.port = port ?? 2234;
-        this.database_url = database_url ?? "mongodb://localhost:27017/";
+        this.database_url = database_url ?? "mongodb://localhost:27017/moefetch";
         this.hostname = hostname ?? "http://127.0.0.1:2234";
 
         this.save();

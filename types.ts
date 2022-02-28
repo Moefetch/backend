@@ -40,34 +40,49 @@ export interface ISaucenaoResult {
 
 }
 
+export interface ITableOfContentsMongo extends mongoose.Document {
+    albumCoverImage: string;
+    name: string;
+    uuid: string;
+    type: AlbumSchemaType;
+
+}
+
+export type AlbumSchemaType = "Anime Pic";
+
+export interface ITableOfContents {
+    albumCoverImage: string | File;
+    name: string;
+    uuid: string;
+    type: AlbumSchemaType;
+
+}
+
 
 export interface IAnimePic extends mongoose.Document {
     id: string;
     file: string;
+    alternative_names?: string[];
     old_file?: string;
     thumbnail_file: string;
+    album: string;
     tags_pixiv?: string[];
     tags_danbooru?: string[];
     artist?: IArtist;
     links: IPostLinks;
     characters?: string[];
     has_results: boolean;
-    pixiv_id?: number;
+    pixiv_post_id?: number;
 }
 
 
-export interface INewAnimePic {
-    id?: string;
+export interface INewPic {
     file?: string;
     old_file?: string;
     thumbnail_file?: string;
-    tags_pixiv?: string[];
-    tags_danbooru?: string[];
-    artist?: IArtist;
-    links?: IPostLinks;
-    characters?: string[];
+    url?: string;
     has_results?: boolean;
-    pixiv_id?: number;
+    type?: AlbumSchemaType;
 }
 
 export interface IPostLinks {

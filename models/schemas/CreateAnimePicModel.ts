@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 
-import {IAnimePic} from "../types";
-import settings from '../settings.json'
+import {IAnimePic} from "../../types";
+import settings from '../../settings.json'
 
 const databasePath = settings.database_url;
 
@@ -25,5 +25,6 @@ const schema = new Schema<IAnimePic>(
     }
 )
 
-const AnimePic = mongoose.model<IAnimePic>("AnimePic", schema);
-export default AnimePic;
+export default function CreateAnimePicModel(modelName: string) {
+    return mongoose.model<IAnimePic>(modelName, schema);
+}
