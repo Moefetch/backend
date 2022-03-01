@@ -99,19 +99,25 @@ class backendServer {
     res.status(200).json(response);
   })
   this.express.post('/create-album', upload.single("thumbnail_file"), async (req, res) => {
-    const thumbnail_file = req.file as Express.Multer.File;
     const {type, name} = req.body;
+    
+    let thumbnail_file;
     const newAlbum: ITableOfContents = {
       name: name as string,
-      albumCoverImage: (thumbnail_file.filename),
+      albumCoverImage: "thumbnail_files/image.svg",
       type: type as AlbumSchemaType,
       uuid: uuidv4()
     };
+    if (req.file) {
+      thumbnail_file = req.file as Express.Multer.File;
+      newAlbum.albumCoverImage = thumbnail_file.filename;
+    }
+  
     const tableOfContentsEntry = new TableOfContentsModel(newAlbum);
     tableOfContentsEntry.save();
-    console.log(newAlbum.name);
 
     mongoose.connection.createCollection(newAlbum.name);
+    res.status(200).json("success");
   })
   this.express.get('/albums', async (req, res) => {      //table is a table of contents aka all of the albums or whatever databases
     const albums = await TableOfContentsModel.find();
