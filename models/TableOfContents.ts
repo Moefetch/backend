@@ -11,6 +11,7 @@ const schema = new Schema<ITableOfContentsMongo>(
     {
         uuid: { type: String, required: true },
         name: {type: String, required: false},
+        estimatedPicCount: {type: Number, required: true},
         albumCoverImage: {type: String, required: true},
         type: {type: String, required: true},
     }

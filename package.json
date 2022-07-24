@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "dev": "ts-node index.ts"
+    "dev": "ts-node makeSureMongoDbIsRunning.ts || start_mongodb.bat.lnk & ts-node index.ts"
   },
   "author": "",
   "license": "ISC",

@@ -3,13 +3,18 @@ import cors from "cors";
 import http from "http";
 import fs from "fs";
 import settings from "./settings";
-console.log(settings);
 import chalk from "chalk";
 import { v4 as uuidv4 } from "uuid";
 import {upload} from "./middlewares/upload"
 
-import type { CreateCollectionOptions } from "mongodb";
 
+function saveSettings() {
+  fs.writeFileSync("./settings.json", JSON.stringify(settings, null, 2));
+  
+}
+
+import type { CreateCollectionOptions } from "mongodb";
+console.log(settings);
 /////////////////////////////////////////////// grounds for testing if dd connection can be established
 import mongoose from "mongoose";
 let serverState;
@@ -29,7 +34,7 @@ import TableOfContentsModel from "./models/TableOfContents";
 //import AnimePic from "./models/AnimePic";
 
 import CreateAnimePicModel from "./models/schemas/CreateAnimePicModel";
-import { ITableOfContents, AlbumSchemaType, INewPic } from "types";
+import { ITableOfContents, AlbumSchemaType, INewPic, IErrorObject } from "types";
 
 
 const typesOfModelsDictionary = {
@@ -41,6 +46,14 @@ const typesOfModels = ["Anime Pic"];
 if (!fs.existsSync("../files/thumbnail_files")) {
   fs.mkdirSync("../files/thumbnail_files", { recursive: true })
 }
+
+const errorsObject: IErrorObject = {
+  anyErrors: false,
+  backendErrors: [],
+  databaseErrors: [],
+  saucenaoAPIErrors: []
+}
+
 
 class backendServer {
   public express: Express;
@@ -89,12 +102,20 @@ class backendServer {
       links: {discord: url},
       has_results: false,
     })
-    newEntry.save()
+    newEntry.save();
+
+    const newNumOfPic = await (typesOfModelsDictionary[type as AlbumSchemaType](album)).countDocuments();
+    const albumUpdate = await TableOfContentsModel.findOne({name: album})
+    if (albumUpdate) {
+      albumUpdate.estimatedPicCount = newNumOfPic; // maybe do ++ instead for less cpu cylces but for now
+      
+      await albumUpdate.save();
+    }
   })
 
   this.express.get('/album/:album', async (req, res) => {
-    const albumName = req.params.album; //im stop here cus how to get what model to use from this 
-    const album = ((await TableOfContentsModel.findOne({uuid: albumName})) as ITableOfContents);
+    const albumUUID = req.params.album; //i think i figured this out, old message -> imma stop here cus idk how to get what model to use from this 
+    const album = ((await TableOfContentsModel.findOne({uuid: albumUUID})) as ITableOfContents);
     const response = await (typesOfModelsDictionary[album.type as AlbumSchemaType](album.name)).find();
     res.status(200).json(response);
   })
@@ -106,7 +127,8 @@ class backendServer {
       name: name as string,
       albumCoverImage: "thumbnail_files/image.svg",
       type: type as AlbumSchemaType,
-      uuid: uuidv4()
+      uuid: uuidv4(),
+      estimatedPicCount: 0,
     };
     if (req.file) {
       thumbnail_file = req.file as Express.Multer.File;
@@ -125,6 +147,47 @@ class backendServer {
     console.log(wuh); */
     return res.status(200).json(albums);
   })
+
+  this.express.post('/connection-test', async (req, res) => {
+    const {
+      database_url,
+      prefered_quality_highest_bool,
+      search_diff_sites,
+      saucenao_api_key
+    } = req.body;
+      console.log(req.body);
+    const mongogo = mongoose.createConnection(database_url);
+
+    mongogo.on('open', function (ref) {
+      mongogo.close(); //connected
+
+      settings.database_url = database_url;
+
+      settings.prefered_quality_highest_bool = prefered_quality_highest_bool;
+      settings.search_diff_sites = search_diff_sites;
+      if (search_diff_sites) settings.saucenao_api_key = saucenao_api_key;
+      
+      saveSettings();
+      return res.status(200).json(errorsObject);
+    });
+    
+    mongogo.on('error', function(error) {
+      console.log("failed to connect to MongoDB . . . . "); //cant connected
+
+      
+      settings.prefered_quality_highest_bool = prefered_quality_highest_bool;
+      settings.search_diff_sites = search_diff_sites;
+      if (search_diff_sites) settings.saucenao_api_key = saucenao_api_key;
+
+      saveSettings();
+      errorsObject.databaseErrors.push('Unable to connect to database')
+      errorsObject.anyErrors = true;
+      return res.status(200).json(errorsObject);
+    })
+  
+    
+  })
+
   this.express.get('/types-of-models', async (req, res) => {
     return res.status(200).json(typesOfModels);
   })

@@ -43,6 +43,7 @@ export interface ISaucenaoResult {
 export interface ITableOfContentsMongo extends mongoose.Document {
     albumCoverImage: string;
     name: string;
+    estimatedPicCount?: number;
     uuid: string;
     type: AlbumSchemaType;
 
@@ -55,7 +56,7 @@ export interface ITableOfContents {
     name: string;
     uuid: string;
     type: AlbumSchemaType;
-
+    estimatedPicCount: number;
 }
 
 
@@ -117,6 +118,15 @@ export interface ISizeCalculationResult extends ISize {
 export interface IImageProps {
     imageSize: ISizeCalculationResult;
     protocol: "http:" | "https:" | "local File";
+}
+
+export interface IErrorObject {
+    anyErrors: boolean;
+    backendErrors: string[];
+    
+    databaseErrors: string[];
+    
+    saucenaoAPIErrors: string[]
 }
 
 export type OutgoingHttpHeader = number | string | string[];
