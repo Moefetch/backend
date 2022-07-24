@@ -1,6 +1,0 @@
-{
-  "ip": "",
-  "port": 2234,
-  "database_url": "mongodb://localhost:27017/moefetch",
-  "hostname": "http://127.0.0.1:2234"
-}
