@@ -16,7 +16,7 @@ function saveSettings() {
 import type { CreateCollectionOptions } from "mongodb";
 console.log(settings);
 /////////////////////////////////////////////// grounds for testing if dd connection can be established
-import mongoose from "mongoose";
+import mongoose, { Mongoose } from "mongoose";
 let serverState;
 
 mongoose.connection.on('error', function(error) {
@@ -58,7 +58,7 @@ const errorsObject: IErrorObject = {
 class backendServer {
   public express: Express;
   public server: http.Server;
-  private backendURL = process.env.DEV ? "http://127.0.0.1:2234" : "http://localhost:2234" ;
+  private backendURL = process.env.DEV ? "http://127.0.0.1:2234" : "http://localhost:2234" ; //if you wanna go with a hostname
 
   constructor() {
     this.express = express();
@@ -156,28 +156,26 @@ class backendServer {
       saucenao_api_key
     } = req.body;
       console.log(req.body);
-    const mongogo = mongoose.createConnection(database_url);
+      
+      settings.prefered_quality_highest_bool = prefered_quality_highest_bool;
+      settings.search_diff_sites = search_diff_sites;
+      if (search_diff_sites) settings.saucenao_api_key = saucenao_api_key;
 
-    mongogo.on('open', function (ref) {
-      mongogo.close(); //connected
+    try {
+      
+    const mongodbTestConnection = await mongoose.createConnection(database_url).asPromise()
+
+    mongodbTestConnection.on('open', function (ref) {
+      mongodbTestConnection.close(); //connected
 
       settings.database_url = database_url;
 
-      settings.prefered_quality_highest_bool = prefered_quality_highest_bool;
-      settings.search_diff_sites = search_diff_sites;
-      if (search_diff_sites) settings.saucenao_api_key = saucenao_api_key;
-      
       saveSettings();
       return res.status(200).json(errorsObject);
     });
-    
-    mongogo.on('error', function(error) {
+    //i need to make sure this has no use ever and then remove it 
+    mongodbTestConnection.on('error', function(error) { //for some reason this doesnt catch errors, good job mongoose
       console.log("failed to connect to MongoDB . . . . "); //cant connected
-
-      
-      settings.prefered_quality_highest_bool = prefered_quality_highest_bool;
-      settings.search_diff_sites = search_diff_sites;
-      if (search_diff_sites) settings.saucenao_api_key = saucenao_api_key;
 
       saveSettings();
       errorsObject.databaseErrors.push('Unable to connect to database')
@@ -186,6 +184,14 @@ class backendServer {
     })
   
     
+    } catch (error) { //this is what actually runs when you cant connect to a database
+      
+      saveSettings();
+      errorsObject.databaseErrors.push('Unable to connect to database')
+      errorsObject.anyErrors = true;
+      return res.status(200).json(errorsObject);
+
+    }
   })
 
   this.express.get('/types-of-models', async (req, res) => {
