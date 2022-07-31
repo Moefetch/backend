@@ -3,11 +3,6 @@ import './server';
 
 
 
-
-
-
-
-
 /* 
 import AnimePic from "./models/AnimePic";
 

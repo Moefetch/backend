@@ -121,13 +121,42 @@ export interface IImageProps {
 }
 
 export interface IErrorObject {
-    anyErrors: boolean;
-    backendErrors: string[];
+    backendUrlError: string;
     
-    databaseErrors: string[];
+    databaseUrlError: string;
     
-    saucenaoAPIErrors: string[]
+    saucenaoApiKeyError: string
 }
 
+export interface IPixivResponse {
+    originalImageUrl: string;
+    urlsArray?: string[];
+    previewImageUrl: string;
+    tags?: IPixivTag[];
+    illustId: number;
+    illustTitle: string;
+    createDate: string;
+    uploadDate: string;
+    authorId: string;
+    authorName: string;
+    illustType: number;
+}
+export interface IDanbooruResponse {
+    imageUrl: string;
+    previewImageUrl: string;
+    tags?: IDanbooruTags;
+}
+
+export interface IDanbooruTags {
+    artists: string[];
+    copyrights?: string[];
+    characters: string[];
+    general: string[];
+}
+export interface IPixivTag {
+    tag: string;
+    romaji?: string;
+    enTranslation?: string;
+}
 export type OutgoingHttpHeader = number | string | string[];
 export interface OutgoingHttpHeaders extends NodeJS.Dict<OutgoingHttpHeader> {}

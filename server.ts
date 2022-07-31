@@ -6,7 +6,7 @@ import settings from "./settings";
 import chalk from "chalk";
 import { v4 as uuidv4 } from "uuid";
 import {upload} from "./middlewares/upload"
-
+import logic from "./src/logic";
 
 function saveSettings() {
   fs.writeFileSync("./settings.json", JSON.stringify(settings, null, 2));
@@ -48,10 +48,9 @@ if (!fs.existsSync("../files/thumbnail_files")) {
 }
 
 const errorsObject: IErrorObject = {
-  anyErrors: false,
-  backendErrors: [],
-  databaseErrors: [],
-  saucenaoAPIErrors: []
+  backendUrlError: "",
+  databaseUrlError: "",
+  saucenaoApiKeyError: "" 
 }
 
 
@@ -93,7 +92,7 @@ class backendServer {
   })
 
   this.express.post('/add-picture', async (req, res) => {
-    const {url, album, type} = req.body;
+    const {url, album, type, useSauceNao} = req.body;
     const newEntry = new (typesOfModelsDictionary[type as AlbumSchemaType](album))({
       id: uuidv4(),
       file: url,
@@ -151,47 +150,36 @@ class backendServer {
   this.express.post('/connection-test', async (req, res) => {
     const {
       database_url,
-      prefered_quality_highest_bool,
       search_diff_sites,
-      saucenao_api_key
+      saucenao_api_key,
+      pixiv_download_first_image
     } = req.body;
-      console.log(req.body);
-      
-      settings.prefered_quality_highest_bool = prefered_quality_highest_bool;
-      settings.search_diff_sites = search_diff_sites;
-      if (search_diff_sites) settings.saucenao_api_key = saucenao_api_key;
-
-    try {
-      
-    const mongodbTestConnection = await mongoose.createConnection(database_url).asPromise()
-
-    mongodbTestConnection.on('open', function (ref) {
-      mongodbTestConnection.close(); //connected
-
-      settings.database_url = database_url;
-
-      saveSettings();
-      return res.status(200).json(errorsObject);
-    });
-    //i need to make sure this has no use ever and then remove it 
-    mongodbTestConnection.on('error', function(error) { //for some reason this doesnt catch errors, good job mongoose
-      console.log("failed to connect to MongoDB . . . . "); //cant connected
-
-      saveSettings();
-      errorsObject.databaseErrors.push('Unable to connect to database')
-      errorsObject.anyErrors = true;
-      return res.status(200).json(errorsObject);
-    })
-  
     
-    } catch (error) { //this is what actually runs when you cant connect to a database
-      
-      saveSettings();
-      errorsObject.databaseErrors.push('Unable to connect to database')
-      errorsObject.anyErrors = true;
-      return res.status(200).json(errorsObject);
+      settings.search_diff_sites = search_diff_sites;
+      settings.pixiv_download_first_image = pixiv_download_first_image;
+      if (search_diff_sites) {
+        let apiKeyCheck = await logic.checkSauceNaoApi(saucenao_api_key);
+        if (apiKeyCheck) {
+          settings.saucenao_api_key = saucenao_api_key;
+          errorsObject.saucenaoApiKeyError = ""
 
-    }
+        }
+        else errorsObject.saucenaoApiKeyError = "SauceNao api key invalid or expired";
+      }
+
+      const mongodbTestConnection = await mongoose.createConnection(database_url).asPromise().then( (connection) => {
+        settings.database_url = database_url;
+        
+        saveSettings();
+        connection.close()
+        errorsObject.databaseUrlError = ''
+        return res.status(200).json(errorsObject);
+      }).catch(() => {
+        saveSettings();
+        errorsObject.databaseUrlError = 'Unable to connect to database'
+        return res.status(200).json(errorsObject);
+      })
+
   })
 
   this.express.get('/types-of-models', async (req, res) => {
