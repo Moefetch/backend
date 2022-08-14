@@ -20,7 +20,7 @@ const schema = new Schema<IAnimePic>(
         artist: {type: {}, required: false},
         links: {type: {}, required: true},
         characters: {type: [String], required: false},
-        has_results: {type: Boolean, required:true},
+        has_results: {type: Boolean, required: false},
         pixiv_post_id:{type: Number, required: false},
     }
 )

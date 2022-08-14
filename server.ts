@@ -92,7 +92,7 @@ class backendServer {
   })
 
   this.express.post('/add-picture', async (req, res) => {
-    const {url, album, type, useSauceNao} = req.body;
+    const {url, album, type, useSauceNao} = req.body; //remember to do .split('\n') and for each to get the stuff bla bla
     const newEntry = new (typesOfModelsDictionary[type as AlbumSchemaType](album))({
       id: uuidv4(),
       file: url,
@@ -152,11 +152,11 @@ class backendServer {
       database_url,
       search_diff_sites,
       saucenao_api_key,
-      pixiv_download_first_image
+      pixiv_download_first_image_only
     } = req.body;
     
       settings.search_diff_sites = search_diff_sites;
-      settings.pixiv_download_first_image = pixiv_download_first_image;
+      settings.pixiv_download_first_image_only = pixiv_download_first_image_only;
       if (search_diff_sites) {
         let apiKeyCheck = await logic.checkSauceNaoApi(saucenao_api_key);
         if (apiKeyCheck) {
