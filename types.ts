@@ -73,13 +73,24 @@ export interface IAnimePic extends mongoose.Document {
     old_file?: string;
     thumbnail_file: string;
     album: string;
-    tags_pixiv?: string[];
-    tags_danbooru?: string[];
+    //tags_pixiv?: string[];
+    //tags_danbooru?: string[];
     artist?: IArtist;
     links: IPostLinks;
+    ids: IPostIds;
     characters?: string[];
     has_results?: boolean;
-    pixiv_post_id?: number;
+    //pixiv_post_id?: number;
+
+    //compatability with INewAnimePic
+    storedResult?: string;
+    tags?: ITagsObject;
+    data: {
+        danbooru?: IDanbooruResponse;
+        yande?:IDanbooruResponse;
+        pixiv?: IPixivResponse;
+    }
+    imageSize?: ISizeCalculationResult ;
 }
 
 
@@ -107,28 +118,39 @@ export interface INewAnimePic {
     tags?: ITagsObject;
     artist?: IArtist;
     links?: IPostLinks;
+    ids?: IPostIds;
     foundUrl?: string;
+    requestOptions?: IRequestOptions;
     imageSize?: ISizeCalculationResult ;
     characters?: string[];
     has_results?: boolean;
-    //ids to add 
-    pixiv_post_id?: number;
-    danbooru_post_id?: number;
     //resulting data from parsing the sites
     data: {
         danbooru?: IDanbooruResponse;
         yande?:IDanbooruResponse;
         pixiv?: IPixivResponse;
     }
-}
 
+    //for mongo compatablity 
+    id?: string;
+    album?: string;
+}
+export interface IRequestOptions {
+    referrer?: string;
+    altUsed?: string;
+}
+export interface IPostIds {
+    danbooru?: number;
+    yande?: number;
+    pixiv?: number;
+}
 
 export interface IPostLinks {
     pixiv?: string;
     danbooru?: string;
+    yande?:string;
     twitter?: string;
     other?: string[];
-    discord?: string;
 }
 
 export interface IArtist {
@@ -179,8 +201,10 @@ export interface IPixivResponse {
     illustType: number;
     width: number;
     height: number;
+    requestOptions?: IRequestOptions
 }
 export interface IDanbooruResponse {
+    id: number;
     imageUrl: string;
     image_width: number;
     image_height: number;
@@ -203,16 +227,8 @@ export interface IPixivTag {
     romaji?: string;
     enTranslation?: string;
 }
-export interface ISettings {
-    port: number;
-    ip: string;
-    initialSetup: boolean;
-    hostname: string;
-    database_url: string;
-    saucenao_api_key: string;
-    search_diff_sites: boolean;
-    pixiv_download_first_image_only: boolean;
-}
+import type {ISetting} from "settings";
+export type ISettings = ISetting;
 
 export type OutgoingHttpHeader = number | string | string[];
 export interface OutgoingHttpHeaders extends NodeJS.Dict<OutgoingHttpHeader> {}

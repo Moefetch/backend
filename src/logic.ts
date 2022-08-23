@@ -5,8 +5,6 @@ import url from "url";
 
 import fs from "fs";
 
-import type { IAnimePic, INewAnimePic, ISettings } from "../types";
-
 import SauceNao from "../saucenao";
 
 import imageSize from "image-size";
@@ -16,7 +14,13 @@ import probeImageSize from "probe-image-size";
 import needle from "needle";
 
 
-import {
+import type {
+  IAnimePic,
+  IRequestOptions,
+  INewAnimePic,
+  IPostLinks,
+  IPostIds,
+  ISettings,
   IFilteredSaucenaoResult,
   ITagsObject,
   ISaucenaoResult,
@@ -34,10 +38,11 @@ import { stringify } from "querystring";
 // console.log(`../anime test/importedPics/${shit[2]}`);
 
 export default class logic {
-  public sauceNao: SauceNao;
-  
-  constructor(sauceNaoApiKey: string) {
-    this.sauceNao = new SauceNao(sauceNaoApiKey);
+  public sauceNao?: SauceNao;
+  public settings: ISettings;
+  constructor(settings: ISettings) {
+    this.settings = settings;
+    if (settings.saucenao_api_key) this.sauceNao = new SauceNao(settings.saucenao_api_key);
   }
 
   public async compareImgSizes(img1: string, img2: string) {
@@ -55,207 +60,305 @@ export default class logic {
    * @param image path string to file / could take in a url aswell but idk
    */
 
-  public async getImageResolution(image: string) {
-    if ((await this.checkImageUrlValid(image)) != "OK") return undefined;
+  public async getImageResolution(image: string | NodeJS.ReadableStream) {
     let imageProps: IImageProps;
-    const resPromise: Promise<IImageProps> = new Promise(async (resolve, reject) => {
-      if (~image.search(/^https?:\/\//)) {
-        const urlParsed = new URL(image);
+    if (typeof image == 'string') {
+      if ((await this.checkImageUrlValid(image)) != "OK") return undefined;
+      const resPromise: Promise<IImageProps> = new Promise(async (resolve, reject) => {
+        if (~image.search(/^https?:\/\//)) {
+          const urlParsed = new URL(image);
 
-        const requestHeaders: OutgoingHttpHeaders = {
-          Accept: "image/avif,image/webp",
-          "Accept-Language": "en-US,en;q=0.5",
-          "Accept-Encoding": "gzip, deflate, br",
-          DNT: 1,
-          Connection: "keep-alive",
-          Referer: `${urlParsed.protocol}//${urlParsed.hostname}/`,
-          "Sec-Fetch-Dest": "image",
-          "Sec-Fetch-Mode": "no-cors",
-          "Sec-Fetch-Site": "cross-site",
-          "Sec-GPC": "1",
-          Pragma: "no-cache",
-          "Cache-Control": "no-cache",
-          TE: "trailers",
-        };
+          const requestHeaders: OutgoingHttpHeaders = {
+            Accept: "image/avif,image/webp",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Accept-Encoding": "gzip, deflate, br",
+            DNT: 1,
+            Connection: "keep-alive",
+            Referer: `${urlParsed.protocol}//${urlParsed.hostname}/`,
+            "Sec-Fetch-Dest": "image",
+            "Sec-Fetch-Mode": "no-cors",
+            "Sec-Fetch-Site": "cross-site",
+            "Sec-GPC": "1",
+            Pragma: "no-cache",
+            "Cache-Control": "no-cache",
+            TE: "trailers",
+          };
 
-        const options: needle.NeedleOptions = {
-          headers: requestHeaders,
-        };
+          const options: needle.NeedleOptions = {
+            headers: requestHeaders,
+          };
 
-        imageProps = {
-          imageSize: (await probeImageSize(image, options)),
-          protocol: "https:",
-        };
-        return resolve(imageProps);
+          imageProps = {
+            imageSize: (await probeImageSize(image, options)),
+            protocol: "https:",
+          };
+          return resolve(imageProps);
+          
+        } else {
+          imageProps = {
+            imageSize: await probeImageSize(image),
+            protocol: "local File",
+          };
+          return resolve(imageProps);
+        }
+      });
+      return resPromise;
+    }
+    else {
+      imageProps = {
+        imageSize: await probeImageSize(image),
+        protocol: "local File",
+      };
+      (imageProps);
+    }
+}
+
+/**
+ * processInput
+ */
+public async processInput(input: string | File, album: string) {
+  let resultantData: INewAnimePic = {
+    data: {}
+  };
+  if (typeof input == "string"){
+    resultantData = await this.processUrl(input);
+    if (resultantData.foundUrl && ( (await this.checkImageUrlValid(resultantData.foundUrl)) == "OK")) {
+      {
+        const filePath = await 
+        this.downloadFromUrl(resultantData.foundUrl,
+            `/saved_pictures/${album}`, 
+            {providedFileName: `${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]}`
+          })
+        if (filePath) resultantData.file = filePath;
         
-      } else {
-        imageProps = {
-          imageSize: await probeImageSize(image),
-          protocol: "local File",
-        };
-        return resolve(imageProps);
       }
-    });
-    return resPromise;
+      if (resultantData.thumbnail_file){
+        const fileThumbnailPath = await 
+          this.downloadFromUrl(resultantData.thumbnail_file,
+            `/saved_pictures_thumbnails/${album}`, 
+            {providedFileName: `thumbnail - ${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]}`
+          })
+        if (fileThumbnailPath) resultantData.thumbnail_file = fileThumbnailPath;
+        }
+    }
   }
+  else {
+    resultantData = (await this.getImageDataFromRandomUrl(input)) ?? {data: {}}
+  }
+  return resultantData;
+}
 
+/**
+ * processPixivId
+ * @param id post id
+ */
+public async processPixivId(id: string) {
+  let resultantData: INewAnimePic = {
+    data: {}
+  };
+  const pixivPostData = await this.getPixivImageData(id, (this.settings.pixiv_download_first_image_only));
+    if (pixivPostData){
+      resultantData.data.pixiv = pixivPostData;
+      resultantData.links = {'pixiv': `https://www.pixiv.net/en/artworks/${id}`};
+      resultantData.thumbnail_file = pixivPostData.previewImageUrl;
+      resultantData.imageSize = {
+        width: pixivPostData.width,
+        height: pixivPostData.height }
+      resultantData.storedResult ="pixiv"
+      resultantData.ids = {pixiv: pixivPostData.illustId}
+      resultantData.foundUrl = pixivPostData?.originalImageUrl ? pixivPostData?.originalImageUrl : undefined;
+      return resultantData;
+    }
+}
+
+/**
+ * processBooru
+ * @param inputUrl post url
+ * 
+ */
+public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
+  let resultantData: INewAnimePic = {
+    data: {}
+  };
+  let IPostLinksObj: IPostLinks = {};
+  let idsObj:IPostIds = {};
+    resultantData.data[type] = 
+    (type == "yande") ? (await this.getYandeReImageData(inputUrl)) : (await this.getdanbooruImageData(inputUrl));
+    if (resultantData.data[type]) {
+      resultantData.storedResult = type;
+      resultantData.foundUrl = resultantData.data[type]?.imageUrl;
+      IPostLinksObj[type] = inputUrl;
+      resultantData.links = IPostLinksObj;
+      resultantData.thumbnail_file = resultantData.data[type]?.previewImageUrl;
+      resultantData.imageSize = {
+        width: resultantData.data[type]?.image_width,
+        height: resultantData.data[type]?.image_height 
+      }
+      idsObj[type] = resultantData.data[type]?.id;
+      resultantData.ids = idsObj;
+
+      return resultantData;
+    }
+}
   /**
-   * processInput
+   * get Anime Pic object from a url or file path
+   * @param inputUrl url to picture or path to file 
    */
-  public async processInput(inputUrl: string, settings: ISettings) {
-    
-    const link = new URL(inputUrl);
+  public async processUrl(inputUrl: string) {
+    const settings = this.settings;
     let resultantData: INewAnimePic = {
       data: {}
     };
 
-    let pixivPostId: string;
-    let pixivPostData: IPixivResponse | undefined;
+      const link = new URL(inputUrl);
+      
 
-    //let danbooruPostData: 
+      let pixivPostId: string;
+
+      //let danbooruPostData: 
 
 
-    switch (link.hostname) {
-      case "i.pximg.net":
-        pixivPostId = inputUrl.substring(
-          inputUrl.lastIndexOf('/') + 1);
-        pixivPostData = await this.getPixivImageData(
-          Number.parseInt(pixivPostId), (settings.pixiv_download_first_image_only));
-        resultantData.data.pixiv = pixivPostData;
-        resultantData.imageSize = {
-          width: pixivPostData?.width,
-          height: pixivPostData?.height }
-        resultantData.storedResult = pixivPostData ? "pixiv" : undefined;
-        resultantData.foundUrl = pixivPostData?.originalImageUrl ? pixivPostData?.originalImageUrl : undefined;
-        break;
-      case "www.pixiv.net": 
-        pixivPostId = inputUrl.substring(
-          inputUrl.lastIndexOf(
-            inputUrl.includes('illust_id=') ? '=' : '/'
-          ) + 1);
-        pixivPostData = await this.getPixivImageData(
-          Number.parseInt(pixivPostId), (settings.pixiv_download_first_image_only));
-        resultantData.data.pixiv = pixivPostData;
-        resultantData.imageSize = {
-          width: pixivPostData?.width,
-          height: pixivPostData?.height }
-        resultantData.storedResult = pixivPostData ? "pixiv" : undefined;
-        resultantData.foundUrl = pixivPostData?.originalImageUrl ? pixivPostData?.originalImageUrl : undefined;
-        break;
-      case "danbooru.donmai.us": // note add pools example https://danbooru.donmai.us/pools/01
-        if (link.pathname.startsWith('/post')) {
-          resultantData.data.danbooru = await this.getdanbooruImageData(inputUrl);
-          if (resultantData.data.danbooru) {
-            resultantData.storedResult = "danbooru";
-            resultantData.foundUrl = resultantData.data.danbooru.imageUrl ;
-            resultantData.imageSize = {
-              width: resultantData.data.danbooru.image_width,
-              height: resultantData.data.danbooru.image_height }
-        }}
-        if (link.pathname.startsWith('/pools')) {
-          
-        }
+      switch (link.hostname) {
+        case "i.pximg.net":
+          pixivPostId = inputUrl.substring(
+            inputUrl.lastIndexOf('/') + 1);
+            const isValid = ((await this.checkImageUrlValid(inputUrl)) == "OK");
+            if (isValid)
+            resultantData = (await this.processPixivId(pixivPostId)) ?? {
+              data: {},
+              foundUrl: inputUrl,
+              links: {other: [inputUrl]},
+              thumbnail_file: inputUrl,
+          };
+          break;
+        case "www.pixiv.net": 
+          pixivPostId = inputUrl.substring(
+            inputUrl.lastIndexOf(
+              inputUrl.includes('illust_id=') ? '=' : '/'
+            ) + 1);
+            resultantData = (await this.processPixivId(pixivPostId)) ?? { data: {}};
+          break;
+        case "danbooru.donmai.us": // note add pools example https://danbooru.donmai.us/pools/01
+          if (link.pathname.startsWith('/post')) {
+            resultantData = (await this.processBooru(inputUrl, 'danbooru')) ?? { data: {}};
+            } else
+          if (link.pathname.startsWith('/pools')) {
+            
+          }
 
-        break;
-      case "yande.re": 
-        if (link.pathname.startsWith('/post')) {
-          resultantData.data.yande = await this.getYandeReImageData(inputUrl);
-          if (resultantData.data.yande) {
-            resultantData.storedResult = "yande";
-            resultantData.foundUrl = resultantData.data.yande?.imageUrl ;
-            resultantData.imageSize = {
-              width: resultantData.data.yande.image_width,
-              height: resultantData.data.yande.image_height }
-        }}
-        if (link.pathname.startsWith('/pools')) {
-          
-        }
+          break;
+        case "yande.re": 
+          if (link.pathname.startsWith('/post')) {
+            resultantData = (await this.processBooru(inputUrl, 'yande')) ?? { data: {}};  
+          } else
+          if (link.pathname.startsWith('/pools')) {
+            
+          }
 
-        break;
-      default:
-        if (inputUrl.match(/[\?]*.(jpg|jpeg|gif|png|tiff|bmp)(\?(.*))?$/))
-        if ((await this.checkImageUrlValid(inputUrl))) 
-        {
-          resultantData = 
-          settings.saucenao_api_key ? (await this.getImageDataFromRandomUrl(inputUrl, settings)) 
-          : {
-
-          } as INewAnimePic;
-        }
-        break;
-    }
+          break;
+        default:
+          if (inputUrl.match(/[\?]*.(jpg|jpeg|gif|png|tiff|bmp)(\?(.*))?$/))
+          if ((await this.checkImageUrlValid(inputUrl)) == "OK") 
+          {
+            if (settings.saucenao_api_key) {
+              const sauceParseRes = await this.getImageDataFromRandomUrl(inputUrl)
+              if (sauceParseRes) resultantData = sauceParseRes;
+              else resultantData = {
+                ...resultantData,
+                foundUrl: inputUrl,
+                links: {other: [inputUrl]}
+              } as INewAnimePic;
+            }
+          }
+          break;
+      }
     return resultantData
   }
+  /**
+   * returns a new animepic object 
+   * @param url url of picture or path string
+   * 
+   */
 
-  public async getImageDataFromRandomUrl(url: string | File, settings: ISettings) {
-    const { inputType, resultArray } = await this.sauceNao.getSauce(url);
-    let filteredResults: IFilteredSaucenaoResult[] = [];
+  public async getImageDataFromRandomUrl(url: string | File) {
 
-    let tagsCollective: ITagsObject;
+    if (this.sauceNao) {
+      const { inputType, resultArray } = await this.sauceNao.getSauce(url);
+      let filteredResults: IFilteredSaucenaoResult = {};
 
-    let originalPostResult: IFilteredSaucenaoResult = {};
-    let originalPostAlternative: IFilteredSaucenaoResult = {};
+      let tagsCollective: ITagsObject = {};
 
-    let highestResPixivPost: IFilteredSaucenaoResult = {};
-    let highestResDanbooruPost: IFilteredSaucenaoResult = {};
+      let originalPostResult: IFilteredSaucenaoResult = {};
+      let originalPostAlternative: IFilteredSaucenaoResult = {};
 
-    console.log(JSON.stringify(resultArray));
+      for (let index = 0; index < resultArray.length; index++) {
+        const item = resultArray[index]
+        if (Number.parseInt(item.header.similarity) > 80) {
+          const urlsToParse = item.data.ext_urls.filter(a => a.includes('pixiv') || a.includes('danbooru') || a.includes('yande'))
+          let animePicPerExtURL: INewAnimePic[] = [];
+          let bestPic: INewAnimePic | undefined;
 
-    for (let index = 0; index < resultArray.length; index++) {
-      const item = resultArray[index]
-      if (Number.parseInt(item.header.similarity) > 80) {
-        const urlsToParse = item.data.ext_urls.filter(a => a.includes('pixiv') || a.includes('danbooru') || a.includes('yande'))
-        let animePicPerExtURL: INewAnimePic[] = [];
-        let bestPic: INewAnimePic | undefined;
-
-        for (let urlsindex = 0; urlsindex < urlsToParse.length; urlsindex++) {
-          const element = urlsToParse[urlsindex];
-          let animePic = await this.processInput(element, settings);
-          if (animePic.foundUrl && !animePic.imageSize) {
-            await this.getImageResolution(animePic.foundUrl).then(a => {
-              if (a) {
-                animePic.imageSize = a.imageSize;                
-              }
-            })
+          for (let urlsindex = 0; urlsindex < urlsToParse.length; urlsindex++) {
+            const element = urlsToParse[urlsindex];
+            let animePic = await this.processUrl(element);
+            if(animePic.storedResult) { //ik this seems stupid, because it is , blame ts compiler and checker not me, it doesn't realize the type of the right side and left side will be the same since it will use same indexer and so i have to seperate the indexing that collides
+              if (animePic.storedResult == "pixiv")
+                tagsCollective[animePic.storedResult] = animePic.data[animePic.storedResult]?.tags 
+              else tagsCollective[animePic.storedResult] = animePic.data[animePic.storedResult]?.tags
+            }
+            if (animePic.foundUrl && !animePic.imageSize) {
+              await this.getImageResolution(animePic.foundUrl).then(a => {
+                if (a) {
+                  animePic.imageSize = a.imageSize;                
+                }
+              })
+            }
+            if (bestPic && bestPic.imageSize && bestPic.imageSize.height && bestPic.imageSize.width) {
+              bestPic = ((bestPic.imageSize.height * bestPic.imageSize.width) < ((animePic.imageSize?.height || 0) * (animePic.imageSize?.width || 0))) ? animePic : bestPic;
+            } else bestPic = animePic;
           }
-          if (bestPic && bestPic.imageSize && bestPic.imageSize.height && bestPic.imageSize.width) {
-            bestPic = ((bestPic.imageSize.height * bestPic.imageSize.width) < ((animePic.imageSize?.height || 0) * (animePic.imageSize?.width || 0))) ? animePic : bestPic;
-          } else bestPic = animePic;
-        }
 
-        //console.log(index + " : ", animePicPerExtURL)
+          //console.log(index + " : ", animePicPerExtURL)
 
-        if (item.data.material) originalPostResult = {
-          reqItem: item,
-          animePic: bestPic,
-          imageSize: bestPic ? bestPic.imageSize : undefined,
-        }
-    
-        else if (item.data.material == "") originalPostAlternative = {
-          reqItem: item,
-          animePic: bestPic,
-          imageSize: bestPic ? bestPic.imageSize : undefined
-        }
-        console.log("original post : ", originalPostAlternative)
-
+          if (item.data.material) { 
+            originalPostResult = {
+              reqItem: item,
+              animePic: bestPic,
+              imageSize: bestPic ? bestPic.imageSize : undefined,
+            }
+          }
       
+          else if (item.data.material == "") originalPostAlternative = {
+            reqItem: item,
+            animePic: bestPic,
+            imageSize: bestPic ? bestPic.imageSize : undefined
+          }
+          else if (filteredResults.animePic && bestPic && bestPic.imageSize && bestPic.imageSize.height && bestPic.imageSize.width && filteredResults.animePic.imageSize?.height && filteredResults.animePic.imageSize?.width ) {
+            filteredResults =
+            (bestPic?.imageSize?.height * bestPic?.imageSize?.width) > (filteredResults.animePic.imageSize.height * filteredResults.animePic.imageSize?.width)?
+            {
+              reqItem: item,
+              animePic: bestPic,
+              imageSize: bestPic ? bestPic.imageSize : undefined
+            } : filteredResults
+          }
+        }
+        
+      }
+      if (originalPostResult.animePic) {
+        originalPostResult.animePic.tags = tagsCollective;
+        return originalPostResult.animePic
+      }
+      else if (originalPostAlternative.animePic) {
+        originalPostAlternative.animePic.tags = tagsCollective;
+        return originalPostAlternative.animePic
+      }
+      else if (filteredResults.animePic) {
+        filteredResults.animePic.tags = tagsCollective;
+        return filteredResults.animePic
       }
     }
-
-
-    //console.log(filteredResults)
-    /* filteredResults = resultArray.map((item: ISaucenaoResult) => {
-      if (item.data.material == "original" || item.data.material == "") return item
-      else 
-    }).filter(a => a != null ) */
-
-    /* console.log("--------------------------------------------",
-     '\n \n \n', "resultArray",
-      JSON.stringify(filteredResults) ) */
-    return {
-
-    } as INewAnimePic;
-  }
+}
 
 
   /**
@@ -272,6 +375,7 @@ export default class logic {
     const json = await response.json()
     return {
       imageUrl: json.file_url,
+      id: json.id,
       createDate: json.created_at,
       updateDate: json.updated_at,
       previewImageUrl: json.preview_file_url,
@@ -303,7 +407,6 @@ export default class logic {
     const $ = cheerio.load(responseText);
     try {
       const firstquery = $('div[id="content"] div[id="post-view"]').children('script').html() || "";
-      console.log(firstquery.substring(firstquery.indexOf('(') +1 , firstquery.lastIndexOf(')')))
       const json = JSON.parse(firstquery.substring(firstquery.indexOf('(') +1 , firstquery.lastIndexOf(')')))
       
       const allTagStringArray = json.posts[0].tags.split(' ');
@@ -348,28 +451,32 @@ export default class logic {
    * @param id pixiv post id to get data of
    */
 
-  public async getPixivImageData(id: number, downloadAll?: boolean) {
+  public async getPixivImageData(id: number | string, downloadAll?: boolean) {
     const response = await this.request(
       `https://www.pixiv.net/en/artworks/${id}`,
       "GET"
     );
     const responseText = await response.text()
     const $ = cheerio.load(responseText);
+    let requestOptions: IRequestOptions | undefined = undefined;
+    requestOptions = {
+      referrer: `https://www.pixiv.net/`,
+    }
     try {
         
       const firstquery = $('meta[id="meta-preload-data"]').attr("content") || "";
       const json = JSON.parse(firstquery).illust[id];
       let urlsArray: string[] | undefined = undefined;
       if (downloadAll) {
+        requestOptions = {
+          referrer: `https://www.pixiv.net/ajax/illust/${id}/pages?lang=en`,
+          altUsed: 'www.pixiv.net'
+        }
         const response2 = await this.request(
           `https://www.pixiv.net/ajax/illust/${id}/pages?lang=en`,
-          "GET"
+          "GET", 
+          requestOptions
         );
-
-        /* console.log(response2.data.body.map( (a: any) => (
-        a.urls.original
-      ))) */
-
         urlsArray = (await response2.json()).body.map(
           (a: any) => a.urls.original
         );
@@ -393,6 +500,7 @@ export default class logic {
         illustType: json.illustType,
         width: json.width,
         height: json.height,
+        requestOptions: requestOptions ?? undefined,
       } as IPixivResponse;
 
       
@@ -447,20 +555,46 @@ export default class logic {
   public async downloadFromUrl(
     url: string,
     downloadPath: string,
-    referrer?: string
+    options? : {
+      referrer?: string,
+      providedFileName?: string
+  }
   ) {
+    let returnPath: string | undefined = '';
     if (!fs.existsSync(downloadPath))
       fs.mkdirSync(downloadPath, { recursive: true });
-    const fileName = url.substring(url.lastIndexOf("/"));
-    await this.request("url", "GET", { referrer: referrer || url })
+
+    const fileExtension = url.substring(url.lastIndexOf('.'))
+    const fileName = options?.providedFileName ?? url.substring(url.lastIndexOf("/"), url.lastIndexOf('.'));
+    console.log('json of the options: ', JSON.stringify({ referrer: options?.referrer || url }))
+    returnPath = `${downloadPath + "/" + fileName + fileExtension}`
+
+    await this.request(url, "GET", { referrer: options?.referrer || url })
       .then((res) => res.blob())
       .then((blob) => blob.arrayBuffer())
       .then((buffer) => Buffer.from(buffer))
-      .then((buffer) =>
-        fs.promises.writeFile(downloadPath + "/" + fileName, buffer)
-      );
+      .then((buffer) => {
+        this.checkDirectory(this.settings.downloadFolder + downloadPath );
+        fs.promises.writeFile(this.settings.downloadFolder + downloadPath + "/" + fileName + fileExtension, buffer)
+          .catch((error) => {
+            console.log(error);
+            returnPath = undefined
+          })
+        });
+      return returnPath;
+    }
+    /* 
+    * checks if a directory exists and returns true if it does else false;
+    */
+     public checkDirectory(path: string) {
+      if (!fs.existsSync(path)) {
+        fs.mkdirSync(path, {
+          recursive: true,
+        });
+        return false;
+      } else return true;
+    }
   }
-}
 /* 
 async function sexx() {
   const { inputType, resultArray } = await sauceNao.getSauce(
