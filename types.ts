@@ -138,6 +138,7 @@ export interface INewAnimePic {
 export interface IRequestOptions {
     referrer?: string;
     altUsed?: string;
+    providedHeaders?: RequestInit;
 }
 export interface IPostIds {
     danbooru?: number;
@@ -212,6 +213,8 @@ export interface IDanbooruResponse {
     updateDate: string;
     previewImageUrl: string;
     tags?: IDanbooruTags;
+    requestOptions?: IRequestOptions
+
 }
 
 export interface IYandeTags extends IDanbooruTags {}

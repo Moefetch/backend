@@ -222,8 +222,9 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
         case "i.pximg.net":
           pixivPostId = inputUrl.substring(
             inputUrl.lastIndexOf('/') + 1);
-            const isValid = ((await this.checkImageUrlValid(inputUrl)) == "OK");
-            if (isValid)
+          pixivPostId = pixivPostId.replace(/[^0-9]/, '')
+          const isValid = ((await this.checkImageUrlValid(inputUrl)) == "OK");
+          if (isValid)
             resultantData = (await this.processPixivId(pixivPostId)) ?? {
               data: {},
               foundUrl: inputUrl,
@@ -238,19 +239,12 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
             ) + 1);
             resultantData = (await this.processPixivId(pixivPostId)) ?? { data: {}};
           break;
+        case "yande.re": 
         case "danbooru.donmai.us": // note add pools example https://danbooru.donmai.us/pools/01
           if (link.pathname.startsWith('/post')) {
-            resultantData = (await this.processBooru(inputUrl, 'danbooru')) ?? { data: {}};
+            resultantData = (await this.processBooru(inputUrl, 
+              link.hostname.substring(0 , link.hostname.indexOf('.')) as 'danbooru' | 'yande')) ?? { data: {}};
             } else
-          if (link.pathname.startsWith('/pools')) {
-            
-          }
-
-          break;
-        case "yande.re": 
-          if (link.pathname.startsWith('/post')) {
-            resultantData = (await this.processBooru(inputUrl, 'yande')) ?? { data: {}};  
-          } else
           if (link.pathname.startsWith('/pools')) {
             
           }
@@ -399,6 +393,25 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
   * @param postUrl url of post e.g. https://yande.re/post/show/24436
   */
   public async getYandeReImageData(postUrl: string) {
+    let headersObj: RequestInit = {
+      credentials: "omit",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0",
+        Accept: "image/avif,image/webp,*/*",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Sec-Fetch-Dest": "image",
+        "Sec-Fetch-Mode": "no-cors",
+        "Sec-Fetch-Site": "same-site",
+        "Sec-GPC": "1",
+        "Pragma": "no-cache",
+        "Cache-Control": "no-cache",
+      },
+      referrer: "https://yande.re/",
+      method: "GET",
+      mode: "cors",
+    };
+    
     const response = await this.request(
       postUrl,
       "GET"
@@ -436,7 +449,7 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
       },
       image_height: json.posts[0].height,
       image_width: json.posts[0].width,
-
+      requestOptions: headersObj,
       } as IDanbooruResponse;
 
     } catch (error) {
@@ -445,6 +458,21 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
       
     }
   }
+
+ public async getPixivCookies(url: string) {
+  const response = (await this.request(
+    'https://www.pixiv.net/',
+    "GET"
+  ))
+  const COOKIES_REGEX = new RegExp(String.raw `first\_visit\_datetime\_pc\=(?<first_visit_datetime_pc>.*?)\; expires\=(?<expires>.*?)\; Max\-Age=(?<MaxAge>.*?)\; (path\=\/)\; (secure\,) PHPSESSID=(?<PHPSESSID>.*?); expires\=(.*?)\; Max\-Age=(.*?)\; (path\=\/)\; domain\=(.*?)\; (secure\;) (HttpOnly\,) p\_ab\_id\=(?<p_ab_id>.*?)\; expires\=(.*?)\; Max\-Age=(.*?)\; (path\=\/)\; domain\=(?<domain>.*?)\; (secure\,) p\_ab\_id\_2\=(?<p_ab_id_2>.*?)\; expires\=(.*?)\; Max\-Age=(.*?)\; (path\=\/)\; domain\=(.*?)\; (secure\,) p\_ab\_d\_id\=(?<p_ab_d_id>.*?)\; expires\=(.*?)\; Max\-Age=(.*?)\; (path\=\/)\; domain\=(.*?)\; (secure\,) yuid\_b\=(?<yuid_b>.*?)\; expires\=(.*?)\; Max\-Age=(.*?)\; (path\=\/)\; (secure\,) \_\_cf\_bm\=(?<__cf_bm>.*?)\; (path\=\/)\; expires\=(.*?)\; domain\=(.*?)\; (?<HttpOnly>.*?)\; (Secure)\; SameSite\=(?<SameSite>.*)`)
+  const cookiesStr = response.headers.get('set-cookie')
+  if (cookiesStr) {
+    const cookiesObj = cookiesStr.match(COOKIES_REGEX)?.groups;
+    const cookies = `first_visit_datetime_pc=${cookiesObj?.first_visit_datetime_pc}; PHPSESSID=${cookiesObj?.PHPSESSID}; p_ab_id=${cookiesObj?.p_ab_id}; p_ab_id_2=${cookiesObj?.p_ab_id_2}; p_ab_d_id=${cookiesObj?.p_ab_d_id}; yuid_b=${cookiesObj?.yuid_b}; __cf_bm=${cookiesObj?.__cf_bm}`;
+    return cookies;
+  }
+  return ''
+ }
  
   /**
    * gets pixiv original image url and image tags
@@ -452,36 +480,66 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
    */
 
   public async getPixivImageData(id: number | string, downloadAll?: boolean) {
+
+    const cookies = (await this.getPixivCookies(`https://www.pixiv.net/en/artworks/${id}`))
+    
+    let headersObj: RequestInit = {
+      credentials: "include",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0",
+        "Accept": "application/json",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-GPC": "1",
+        "Pragma": "no-cache",
+        "Cache-Control": "no-cache",
+        cookie: cookies,
+      },
+      referrer: `https://www.pixiv.net/en/artworks/${id}`,
+      method: "GET",
+      mode: "cors",
+    };
+    const providedDownloadHeaders: IRequestOptions = {providedHeaders: headersObj = {
+      "credentials": "omit",
+      "headers": {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0",
+          "Accept": "image/avif,image/webp,*/*",
+          "Accept-Language": "en-US,en;q=0.5",
+          "Sec-Fetch-Dest": "image",
+          "Sec-Fetch-Mode": "no-cors",
+          "Sec-Fetch-Site": "cross-site",
+          "Sec-GPC": "1",
+          "Pragma": "no-cache",
+          "Cache-Control": "no-cache"
+      },
+      "referrer": "https://www.pixiv.net/",
+      "method": "GET",
+      "mode": "cors"
+    }}
     const response = await this.request(
-      `https://www.pixiv.net/en/artworks/${id}`,
-      "GET"
+      `https://www.pixiv.net/ajax/illust/${id}?lang=en`,
+      "GET",
+      {providedHeaders: headersObj}  
     );
-    const responseText = await response.text()
-    const $ = cheerio.load(responseText);
-    let requestOptions: IRequestOptions | undefined = undefined;
-    requestOptions = {
-      referrer: `https://www.pixiv.net/`,
-    }
+    const responseJson = await response.json()
     try {
-        
-      const firstquery = $('meta[id="meta-preload-data"]').attr("content") || "";
-      const json = JSON.parse(firstquery).illust[id];
+      const json = responseJson.body;
       let urlsArray: string[] | undefined = undefined;
-      if (downloadAll) {
-        requestOptions = {
-          referrer: `https://www.pixiv.net/ajax/illust/${id}/pages?lang=en`,
-          altUsed: 'www.pixiv.net'
-        }
+      console.log("json.pageCount: ", json.pageCount, 'json.pageCount: ', json.pageCount, 'downloadAll: ', downloadAll );
+      
+      if (json.pageCount && (json.pageCount > 1) && downloadAll ) {
+    headersObj.referrer = `https://www.pixiv.net/ajax/illust/${id}/pages?lang=en`;
         const response2 = await this.request(
           `https://www.pixiv.net/ajax/illust/${id}/pages?lang=en`,
-          "GET", 
-          requestOptions
+          "GET",
+          {providedHeaders: headersObj}
         );
         urlsArray = (await response2.json()).body.map(
           (a: any) => a.urls.original
         );
       }
-
       return {
         originalImageUrl: json.urls.original,
         previewImageUrl: json.urls.small,
@@ -500,7 +558,7 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
         illustType: json.illustType,
         width: json.width,
         height: json.height,
-        requestOptions: requestOptions ?? undefined,
+        requestOptions: providedDownloadHeaders ?? undefined,
       } as IPixivResponse;
 
       
@@ -512,22 +570,23 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
   public request(
     element: string,
     requestMethod: "GET" | "POST",
-    options?: { referrer?: string; altUsed?: string }
+    options?: { referrer?: string; altUsed?: string; providedHeaders?: RequestInit }
   ) {
-    let headersObj: RequestInit = {
+    let headersObj: RequestInit = options?.providedHeaders ?? {
       credentials: "omit",
       headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0",
-        Accept: "image/avif,image/webp,*/*",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
-        "Sec-Fetch-Dest": "image",
-        "Sec-Fetch-Mode": "no-cors",
-        "Sec-Fetch-Site": "cross-site",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
         "Sec-GPC": "1",
-        Pragma: "no-cache",
-        referer: options?.referrer ? options.referrer : element,
+        "Pragma": "no-cache",
         "Cache-Control": "no-cache",
+        referer: options?.referrer ? options.referrer : '',
       },
       method: requestMethod,
       mode: "cors",
