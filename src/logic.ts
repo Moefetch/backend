@@ -120,15 +120,22 @@ public async processInput(input: string | File, album: string) {
   let resultantData: INewAnimePic = {
     data: {}
   };
+  let providedHeadersObj: RequestInit | undefined = undefined
   if (typeof input == "string"){
     resultantData = await this.processUrl(input);
-    if (resultantData.foundUrl && ( (await this.checkImageUrlValid(resultantData.foundUrl)) == "OK")) {
+    if (resultantData.storedResult) {
+    providedHeadersObj = resultantData.data[resultantData?.storedResult]?.requestOptions?.providedHeaders
+  }
+    if (resultantData.foundUrl) {
       {
+        
         const filePath = await 
         this.downloadFromUrl(resultantData.foundUrl,
             `/saved_pictures/${album}`, 
-            {providedFileName: `${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]}`
+            {providedFileName: `${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]}`,
+            providedHeaders: providedHeadersObj
           })
+
         if (filePath) resultantData.file = filePath;
         
       }
@@ -136,7 +143,8 @@ public async processInput(input: string | File, album: string) {
         const fileThumbnailPath = await 
           this.downloadFromUrl(resultantData.thumbnail_file,
             `/saved_pictures_thumbnails/${album}`, 
-            {providedFileName: `thumbnail - ${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]}`
+            {providedFileName: `thumbnail - ${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]}`,
+            providedHeaders: providedHeadersObj
           })
         if (fileThumbnailPath) resultantData.thumbnail_file = fileThumbnailPath;
         }
@@ -496,12 +504,13 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
         "Pragma": "no-cache",
         "Cache-Control": "no-cache",
         cookie: cookies,
+        "referer" : "https://www.pixiv.net/",
       },
       referrer: `https://www.pixiv.net/en/artworks/${id}`,
       method: "GET",
       mode: "cors",
     };
-    const providedDownloadHeaders: IRequestOptions = {providedHeaders: headersObj = {
+    let providedDownloadHeaders: IRequestOptions = {providedHeaders: headersObj = {
       "credentials": "omit",
       "headers": {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0",
@@ -512,8 +521,9 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
           "Sec-Fetch-Site": "cross-site",
           "Sec-GPC": "1",
           "Pragma": "no-cache",
-          "Cache-Control": "no-cache"
-      },
+          "Cache-Control": "no-cache",
+          "referer" : "https://www.pixiv.net/"
+        },
       "referrer": "https://www.pixiv.net/",
       "method": "GET",
       "mode": "cors"
@@ -527,7 +537,7 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
     try {
       const json = responseJson.body;
       let urlsArray: string[] | undefined = undefined;
-      console.log("json.pageCount: ", json.pageCount, 'json.pageCount: ', json.pageCount, 'downloadAll: ', downloadAll );
+      
       
       if (json.pageCount && (json.pageCount > 1) && downloadAll ) {
     headersObj.referrer = `https://www.pixiv.net/ajax/illust/${id}/pages?lang=en`;
@@ -540,6 +550,27 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
           (a: any) => a.urls.original
         );
       }
+      providedDownloadHeaders = {providedHeaders: {
+
+        "credentials" : "omit",
+        "headers" :
+        {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:104.0) Gecko/20100101 Firefox/104.0",
+          "Accept": "image/avif,image/webp,*/*",
+          "Accept-Language": "en-US,en;q=0.5",
+          "Sec-Fetch-Dest": "image",
+          "Sec-Fetch-Mode": "no-cors",
+          "Sec-Fetch-Site": "cross-site",
+          "Sec-GPC": "1",
+          "Pragma": "no-cache",
+          "Cache-Control": "no-cache",
+          "referer" : "https://www.pixiv.net/"
+      },
+        "referrer" : "https://www.pixiv.net/",
+        "method" : "GET",
+        "mode" : "cors"
+      
+      }}
       return {
         originalImageUrl: json.urls.original,
         previewImageUrl: json.urls.small,
@@ -610,30 +641,37 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
   public async checkImageUrlValid(imageUrl: string) {
     return (await this.request(imageUrl, "GET")).statusText
   }
-
+  /**
+   * 
+   * @param url url to the file to download
+   * @param downloadPath path inside the default download folder
+   * @param options optional object to pass in either a referrer for the requests and/or a filename, not that the filename doesnt need to contain file extension
+   * you can also passin a header object in options.providedHeaders
+   * @returns path to the downloaded file
+   */
   public async downloadFromUrl(
     url: string,
     downloadPath: string,
     options? : {
       referrer?: string,
-      providedFileName?: string
+      providedFileName?: string,
+      providedHeaders?: RequestInit
   }
   ) {
+    console.log(JSON.stringify(options?.providedHeaders))
     let returnPath: string | undefined = '';
-    if (!fs.existsSync(downloadPath))
-      fs.mkdirSync(downloadPath, { recursive: true });
 
     const fileExtension = url.substring(url.lastIndexOf('.'))
     const fileName = options?.providedFileName ?? url.substring(url.lastIndexOf("/"), url.lastIndexOf('.'));
-    console.log('json of the options: ', JSON.stringify({ referrer: options?.referrer || url }))
+    
     returnPath = `${downloadPath + "/" + fileName + fileExtension}`
-
-    await this.request(url, "GET", { referrer: options?.referrer || url })
-      .then((res) => res.blob())
-      .then((blob) => blob.arrayBuffer())
+    
+    await this.request(url, "GET", {providedHeaders: options?.providedHeaders, referrer: options?.referrer || ''} )
+      .then(async (res) => {console.log(res.headers) ; return await res.blob()})
+      .then(async (blob) => await blob.arrayBuffer())
       .then((buffer) => Buffer.from(buffer))
       .then((buffer) => {
-        this.checkDirectory(this.settings.downloadFolder + downloadPath );
+        this.checkDirectoryAndCreate(this.settings.downloadFolder + downloadPath );
         fs.promises.writeFile(this.settings.downloadFolder + downloadPath + "/" + fileName + fileExtension, buffer)
           .catch((error) => {
             console.log(error);
@@ -642,10 +680,20 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
         });
       return returnPath;
     }
-    /* 
+    /**
     * checks if a directory exists and returns true if it does else false;
     */
-     public checkDirectory(path: string) {
+    public checkDirectory(path: string) {
+      console.log("path: ", path)
+      if (!fs.existsSync(path)) {
+        return false;
+      } else return true;
+    }
+
+    /**
+    * checks path and creates it if it doesnt exist
+    */
+    public checkDirectoryAndCreate(path: string) {
       if (!fs.existsSync(path)) {
         fs.mkdirSync(path, {
           recursive: true,

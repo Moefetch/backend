@@ -65,10 +65,10 @@ function typesOfModelsDictionary<T>(type: AlbumSchemaType, name: string): mongoo
 
 const typesOfModels = ["Anime Pic"];
 
-if (!logic.checkDirectory(`${settings.downloadFolder}/album_thumbnail_files/image.svg`)) {
+if (!logic.checkDirectory(`${settings.downloadFolder}/album_thumbnail_files/`)) {
   logic.downloadFromUrl(
     "https://raw.githubusercontent.com/Moefetch/backend/33a32fb43464e006eb84c43202b8350d68136e75/image.svg",
-    `${settings.downloadFolder}/album_thumbnail_files/`
+    `/album_thumbnail_files/`,{providedFileName: 'image'}
   );
 }
 
@@ -195,12 +195,12 @@ class backendServer {
         tableOfContentsEntry.save();
 
         mongoose.connection.createCollection(newAlbum.name);
-        res.status(200).json("success");
+        res.status(200).json(newAlbum);
       }
     );
     this.express.get("/albums", async (req, res) => {
       //table is a table of contents aka all of the albums or whatever databases
-      const albums = await TableOfContentsModel.find();
+      const albums = await TableOfContentsModel.find<ITableOfContents>();
       /* const wuh = await (await dbConnection).connection.db.listCollections().toArray()
     console.log(wuh); */
       return res.status(200).json(albums);
