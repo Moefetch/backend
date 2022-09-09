@@ -117,7 +117,7 @@ class backendServer {
     });
 
     this.express.post("/add-picture", async (req, res) => {
-      const { url, album, type, useSauceNao } = req.body; //remember to do .split('\n') and for each to get the stuff bla bla
+      const { url, album, type, useSauceNao, isHidden } = req.body; //remember to do .split('\n') and for each to get the stuff bla bla
       const newModelEntry = typesOfModelsDictionary<IAnimePic>((type as AlbumSchemaType),(album));
 
       let urlsArray: string[] = url.split("\n").filter( (a:string) => a != "");
@@ -129,11 +129,12 @@ class backendServer {
             id: uuidv4(),
             album: album,
           }))
-          if (entry.foundUrl) {
+          if (entry.imagesDataArray?.length) {
             const newEntry = new newModelEntry({
               ...entry,
               id: uuidv4(),
               album: album,
+              isHidden: (isHidden != '')
             }); 
             newEntry.save();
           }
@@ -165,10 +166,14 @@ class backendServer {
       const album = (await TableOfContentsModel.findOne({
         uuid: albumUUID,
       })) as ITableOfContents;
+      if (album) {
       const response = await typesOfModelsDictionary<IAnimePic>(
         album.type as AlbumSchemaType,
         album.name).find();
-      res.status(200).json(response);
+      res.status(200).json(response)
+      } else {
+        res.status(404)
+      } 
     });
 
     this.express.post(
@@ -176,8 +181,8 @@ class backendServer {
       upload.single("album_thumbnail_file"),
       async (req, res) => {
         console.log(req)
-        const { type, name } = req.body;
-
+        const { type, name, isHidden } = req.body;
+        console.log(isHidden)
         let album_thumbnail_files;
         const newAlbum: ITableOfContents = {
           name: name as string,
@@ -185,6 +190,7 @@ class backendServer {
           type: type as AlbumSchemaType,
           uuid: uuidv4(),
           estimatedPicCount: 0,
+          isHidden: (isHidden != '')
         };
         if (req.file) {
           album_thumbnail_files = req.file as Express.Multer.File;

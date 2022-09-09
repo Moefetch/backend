@@ -10,16 +10,20 @@ export default function CreateAnimePicModel(modelName: string) {
     const schema = new Schema<IAnimePic>(
         {
             id: { type: String, required: true },
-            file: {type: String, required: true},
+            indexer: {type: Number, required: true},
+            imagesDataArray: {type: [Object], required: true},
             alternative_names: {type: [String], required: false},
-            old_file: {type: String, required: false},
-            thumbnail_file: {type: String, required: true},
+            oldFile: {type: String, required: false},
             album: {type: String, required: true},
-            tags: {type: {}, required: false},
             artist: {type: {}, required: false},
+            storedResult: {type: String, required: true},
             links: {type: {}, required: true},
-            characters: {type: [String], required: false},
-            has_results: {type: Boolean, required: false},
+            ids: {type: {}, required: false},
+            isHidden: {type: Boolean, required: false},
+            isNSFW: {type: Boolean, required: false},
+            hasResults: {type: Boolean, required: false},
+            tags: {type: {}, required: false},
+
         },
         {
             collection: modelName

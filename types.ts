@@ -52,6 +52,7 @@ export interface ITableOfContentsMongo extends mongoose.Document {
     estimatedPicCount?: number;
     uuid: string;
     type: AlbumSchemaType;
+    isHidden: boolean;
 
 }
 
@@ -63,34 +64,7 @@ export interface ITableOfContents {
     uuid: string;
     type: AlbumSchemaType;
     estimatedPicCount: number;
-}
-
-
-export interface IAnimePic extends mongoose.Document {
-    id: string;
-    file: string;
-    alternative_names?: string[];
-    old_file?: string;
-    thumbnail_file: string;
-    album: string;
-    //tags_pixiv?: string[];
-    //tags_danbooru?: string[];
-    artist?: IArtist;
-    links: IPostLinks;
-    ids: IPostIds;
-    characters?: string[];
-    has_results?: boolean;
-    //pixiv_post_id?: number;
-
-    //compatability with INewAnimePic
-    storedResult?: string;
-    tags?: ITagsObject;
-    data: {
-        danbooru?: IDanbooruResponse;
-        yande?:IDanbooruResponse;
-        pixiv?: IPixivResponse;
-    }
-    imageSize?: ISizeCalculationResult ;
+    isHidden: boolean;
 }
 
 
@@ -108,22 +82,54 @@ export interface ITagsObject {
     danbooru?: IDanbooruTags;
     yande?: IYandeTags;
 }
+export interface IImageDataArray  {
+    file: string;
+    thumbnail_file: string;
+    imageSize?: ISizeCalculationResult;
+}
+export interface IAnimePic extends mongoose.Document {
+    id: string;
+    indexer: number;
+    imagesDataArray: IImageDataArray[];
+    alternative_names?: string[];
+    oldFile?: string;
+    album: string;
+    //tags_pixiv?: string[];
+    //tags_danbooru?: string[];
+    artist?: IArtist;
+    storedResult?: string;
+    links: IPostLinks;
+    ids: IPostIds;
+    isHidden: boolean;
+    isNSFW: boolean;
+    hasResults?: boolean;
+    //pixiv_post_id?: number;
+
+    //compatability with INewAnimePic
+    tags?: ITagsObject;
+    //imageSize?: ISizeCalculationResult;
+}
+
 
 export interface INewAnimePic {
-    file?: string;
-    url?: string;
-    thumbnail_file?: string;
+    indexer: number;
+    
+    imagesDataArray?: IImageDataArray[];
+    
     storedResult?: "danbooru" | "pixiv" | 'yande';
     //parsed from results
+    urlsArray?: urlsArray[];
     tags?: ITagsObject;
-    artist?: IArtist;
+    artist?: {
+        artistName: string;
+        link: string;
+    };
     links?: IPostLinks;
     ids?: IPostIds;
-    foundUrl?: string;
     requestOptions?: IRequestOptions;
-    imageSize?: ISizeCalculationResult ;
-    characters?: string[];
+    imageSize?: ISizeCalculationResult;
     has_results?: boolean;
+    isNSFW?: boolean;
     //resulting data from parsing the sites
     data: {
         danbooru?: IDanbooruResponse;
@@ -135,6 +141,14 @@ export interface INewAnimePic {
     id?: string;
     album?: string;
 }
+
+interface urlsArray {
+    imageUrl: string;
+    thumbnailUrl: string;
+    width: number;
+    height: number;
+}
+
 export interface IRequestOptions {
     referrer?: string;
     altUsed?: string;
@@ -190,7 +204,7 @@ export interface IErrorObject {
 
 export interface IPixivResponse {
     originalImageUrl: string;
-    urlsArray?: string[];
+    //urlsArray?: string[];
     previewImageUrl: string;
     tags?: IPixivTag[];
     illustId: number;
@@ -202,7 +216,19 @@ export interface IPixivResponse {
     illustType: number;
     width: number;
     height: number;
+    arrayIndexer?: number;
+    urlsArrayBody: pixivUrlsArrayElement[];
     requestOptions?: IRequestOptions
+}
+interface pixivUrlsArrayElement {
+    urls: {
+        thumb_mini?: string;
+        small: string;
+        regular?: string;
+        original: string;
+    }
+    width: number;
+    height: number;
 }
 export interface IDanbooruResponse {
     id: number;
@@ -210,6 +236,8 @@ export interface IDanbooruResponse {
     image_width: number;
     image_height: number;
     createDate: string;
+    rating: string;
+    isNsfw: boolean;
     updateDate: string;
     previewImageUrl: string;
     tags?: IDanbooruTags;

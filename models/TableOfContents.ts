@@ -14,6 +14,7 @@ const schema = new Schema<ITableOfContentsMongo>(
         estimatedPicCount: {type: Number, required: true},
         albumCoverImage: {type: String, required: true},
         type: {type: String, required: true},
+        isHidden: {type: Boolean, required: true},
     }
 )
  
