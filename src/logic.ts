@@ -29,6 +29,7 @@ import type {
   OutgoingHttpHeaders,
   IPixivResponse,
   IDanbooruResponse,
+  IPixivTag,
 } from "../types";
 import cheerio from "cheerio";
 import core from "file-type/core";
@@ -187,9 +188,9 @@ public async processPixivId(id: string, arrayIndexer?: number) {
     data: {},
     isNSFW: false,
     indexer: arrayIndexer ?? 0,
+    tags: [],
   };
   const pixivPostData = await this.getPixivImageData(id, arrayIndexer);
-  console.log("so? ", JSON.stringify(pixivPostData));
   
     if (pixivPostData){
       
@@ -206,7 +207,10 @@ public async processPixivId(id: string, arrayIndexer?: number) {
         width: pixivPostData.width,
         height: pixivPostData.height }
       resultantData.storedResult ="pixiv"
+      resultantData.artists = [pixivPostData.authorName]
       resultantData.ids = {pixiv: pixivPostData.illustId}
+      resultantData.tags = pixivPostData.tags?.map((a: IPixivTag) => (a.enTranslation || a.romaji || a.tag))
+      if (resultantData.tags && resultantData.tags[0] == 'manga') resultantData.tags.splice(0, 1)
       if (pixivPostData.tags && pixivPostData.tags[0].tag == "R-18") resultantData.isNSFW = true;
       return resultantData;
     }
@@ -226,9 +230,11 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
   let resultantData: INewAnimePic = {
     data: {},
     indexer: 0,
+    tags: []
   };
   let IPostLinksObj: IPostLinks = {};
   let idsObj:IPostIds = {};
+  let tagsObj: ITagsObject = {};
   const res = await this[this.booruDictionary[type]](inputUrl);
     resultantData.data[type] = res;
     if (res && res.imageUrl && res.previewImageUrl) {
@@ -245,6 +251,14 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
         width: res.image_width,
         height: res.image_height 
       }
+
+      let tags: string[] = res.tags?.general ?? []
+      tags = res.tags?.copyrights ? tags.concat(res.tags?.copyrights) : tags;
+      tags = res.tags?.characters ? tags.concat(res.tags?.characters) : tags;
+
+      resultantData.tags = tags;
+    
+      resultantData.artists = res.tags?.artists
       resultantData.isNSFW = res.isNsfw;
       idsObj[type] = res.id;
       resultantData.ids = idsObj;
@@ -350,6 +364,8 @@ public  checkPixivImageUrlValid(inputUrl: string) {
           {
             if (settings.saucenao_api_key) {
               const sauceParseRes = await this.getImageDataFromRandomUrl(inputUrl)
+              console.log(sauceParseRes);
+              
               if (sauceParseRes) resultantData = sauceParseRes;
               else resultantData = {
                 ...resultantData,
@@ -371,10 +387,10 @@ public  checkPixivImageUrlValid(inputUrl: string) {
   public async getImageDataFromRandomUrl(url: string | File) {
 
     if (this.sauceNao) {
-      const { inputType, resultArray } = await this.sauceNao.getSauce(url);
+      const { resultArray } = await this.sauceNao.getSauce(url);
       let filteredResults: IFilteredSaucenaoResult = {};
 
-      let tagsCollective: ITagsObject = {};
+      let tagsCollective: Set<string> = new Set<string>();
 
       let originalPostResult: IFilteredSaucenaoResult = {};
       let originalPostAlternative: IFilteredSaucenaoResult = {};
@@ -389,10 +405,12 @@ public  checkPixivImageUrlValid(inputUrl: string) {
           for (let urlsindex = 0; urlsindex < urlsToParse.length; urlsindex++) {
             const element = urlsToParse[urlsindex];
             let animePic = await this.processUrl(element);
+            
+            
             if(animePic.storedResult) { //ik this seems stupid, because it is , blame ts compiler and checker not me, it doesn't realize the type of the right side and left side will be the same since it will use same indexer and so i have to seperate the indexing that collides
-              if (animePic.storedResult == "pixiv")
-                tagsCollective[animePic.storedResult] = animePic.data[animePic.storedResult]?.tags 
-              else tagsCollective[animePic.storedResult] = animePic.data[animePic.storedResult]?.tags
+              if (animePic.tags)
+                animePic.tags.forEach(tagsCollective.add, tagsCollective)
+              
             }
             if (animePic.urlsArray && !animePic.imageSize ) {
               await this.getImageResolution(animePic.urlsArray[animePic.indexer].imageUrl).then(a => {
@@ -407,7 +425,8 @@ public  checkPixivImageUrlValid(inputUrl: string) {
           }
 
           //console.log(index + " : ", animePicPerExtURL)
-
+          console.log(bestPic?.urlsArray?.length);
+          
           if (item.data.material) { 
             originalPostResult = {
               reqItem: item,
@@ -421,7 +440,9 @@ public  checkPixivImageUrlValid(inputUrl: string) {
             animePic: bestPic,
             imageSize: bestPic ? bestPic.imageSize : undefined
           }
-          else if (filteredResults.animePic && bestPic && bestPic.imageSize && bestPic.imageSize.height && bestPic.imageSize.width && filteredResults.animePic.imageSize?.height && filteredResults.animePic.imageSize?.width ) {
+          
+          
+          else if (filteredResults.animePic?.urlsArray?.length && bestPic?.urlsArray?.length && bestPic.imageSize && bestPic.imageSize.height && bestPic.imageSize.width && filteredResults.animePic.imageSize?.height && filteredResults.animePic.imageSize?.width ) {
             filteredResults =
             (bestPic?.imageSize?.height * bestPic?.imageSize?.width) > (filteredResults.animePic.imageSize.height * filteredResults.animePic.imageSize?.width)?
             {
@@ -430,19 +451,23 @@ public  checkPixivImageUrlValid(inputUrl: string) {
               imageSize: bestPic ? bestPic.imageSize : undefined
             } : filteredResults
           }
+          else {
+            filteredResults.animePic = bestPic
+          }
         }
         
       }
-      if (originalPostResult.animePic) {
-        originalPostResult.animePic.tags = tagsCollective;
+      const tagsCollectiveString = Array.from(tagsCollective)
+      if (originalPostResult.animePic?.urlsArray?.length) {
+        originalPostResult.animePic.tags = tagsCollectiveString;
         return originalPostResult.animePic
       }
-      else if (originalPostAlternative.animePic) {
-        originalPostAlternative.animePic.tags = tagsCollective;
+      else if (originalPostAlternative.animePic?.urlsArray?.length) {
+        originalPostAlternative.animePic.tags = tagsCollectiveString;
         return originalPostAlternative.animePic
       }
-      else if (filteredResults.animePic) {
-        filteredResults.animePic.tags = tagsCollective;
+      else if (filteredResults.animePic?.urlsArray?.length) {
+        filteredResults.animePic.tags = tagsCollectiveString;
         return filteredResults.animePic
       }
     }
@@ -624,7 +649,9 @@ public  checkPixivImageUrlValid(inputUrl: string) {
       "GET",
       {providedHeaders: headersObj}  
     );
+    
     const responseJson = await response.json()
+    if (responseJson.error) return undefined;
     try {
       const json = responseJson.body;
       // let urlsArray: string[] | undefined = undefined;
@@ -643,7 +670,7 @@ public  checkPixivImageUrlValid(inputUrl: string) {
           (a: any) => a.urls.original
         ); */
         urlsArrayBody = json2.body
-        console.log(json2.body)
+        
         if (arrayIndexer) altThumbnail = json2.body[arrayIndexer].urls.small
       }
       providedDownloadHeaders = {providedHeaders: {
@@ -667,6 +694,8 @@ public  checkPixivImageUrlValid(inputUrl: string) {
         "mode" : "cors"
       
       }}
+      
+      
       return {
         originalImageUrl: json.urls.original,
         previewImageUrl: json.urls.small,
@@ -748,6 +777,9 @@ public  checkPixivImageUrlValid(inputUrl: string) {
   public async checkImageUrlValid(imageUrl: string, options?: { referrer?: string; altUsed?: string; providedHeaders?: RequestInit }) {
     return (await this.request(imageUrl, "GET", options)).statusText
   }
+
+
+
   /**
    * 
    * @param url url to the file to download
@@ -774,7 +806,7 @@ public  checkPixivImageUrlValid(inputUrl: string) {
     returnPath = `${downloadPath + "/" + fileName + fileExtension}`
     
     await this.request(url, "GET", {providedHeaders: options?.providedHeaders, referrer: options?.referrer || ''} )
-      .then(async (res) => {console.log(res.headers) ; return await res.blob()})
+      .then(async (res) => (await res.blob()))
       .then(async (blob) => await blob.arrayBuffer())
       .then((buffer) => Buffer.from(buffer))
       .then((buffer) => {

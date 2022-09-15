@@ -15,14 +15,14 @@ export default function CreateAnimePicModel(modelName: string) {
             alternative_names: {type: [String], required: false},
             oldFile: {type: String, required: false},
             album: {type: String, required: true},
-            artist: {type: {}, required: false},
+            artists: {type: [String], required: false},
             storedResult: {type: String, required: true},
             links: {type: {}, required: true},
             ids: {type: {}, required: false},
             isHidden: {type: Boolean, required: false},
             isNSFW: {type: Boolean, required: false},
             hasResults: {type: Boolean, required: false},
-            tags: {type: {}, required: false},
+            tags: {type: [String], required: false},
 
         },
         {

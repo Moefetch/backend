@@ -77,10 +77,17 @@ export interface INewPic {
     type?: AlbumSchemaType;
 }
 
+
+
 export interface ITagsObject {
     pixiv?: IPixivTag[];
     danbooru?: IDanbooruTags;
     yande?: IYandeTags;
+}
+
+export interface IPixivTags {
+    tags: string[];
+    raw: IPixivTag[];
 }
 export interface IImageDataArray  {
     file: string;
@@ -96,7 +103,7 @@ export interface IAnimePic extends mongoose.Document {
     album: string;
     //tags_pixiv?: string[];
     //tags_danbooru?: string[];
-    artist?: IArtist;
+    artists?: string[];
     storedResult?: string;
     links: IPostLinks;
     ids: IPostIds;
@@ -106,7 +113,7 @@ export interface IAnimePic extends mongoose.Document {
     //pixiv_post_id?: number;
 
     //compatability with INewAnimePic
-    tags?: ITagsObject;
+    tags?: string[];
     //imageSize?: ISizeCalculationResult;
 }
 
@@ -119,11 +126,8 @@ export interface INewAnimePic {
     storedResult?: "danbooru" | "pixiv" | 'yande';
     //parsed from results
     urlsArray?: urlsArray[];
-    tags?: ITagsObject;
-    artist?: {
-        artistName: string;
-        link: string;
-    };
+    tags?: string[];
+    artists?: string[];
     links?: IPostLinks;
     ids?: IPostIds;
     requestOptions?: IRequestOptions;
