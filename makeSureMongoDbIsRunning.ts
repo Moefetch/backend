@@ -9,7 +9,7 @@ mongoose.connection.on('open', function (ref) {
 mongoose.connection.on('error', function(error) {
     throw new Error("mongoDB not started \n STARTING . . . . ");
 })
+if (settings.database_url) mongoose.connect(settings.database_url);
 
-const dbConnection = mongoose.connect(settings.database_url);
 
 

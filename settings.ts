@@ -3,6 +3,7 @@ import fs from "fs";
 export interface ISetting {
     port: number;
     ip: string;
+    use_mongodb: boolean;
     downloadFolder: string;
     initialSetup: boolean;
     hostname: string;
@@ -21,6 +22,7 @@ class Settings implements ISetting {
     public ip: string;
     public downloadFolder: string;
     public initialSetup: boolean;
+    public use_mongodb: boolean;
     public hostname: string ;
     public database_url: string;
     public saucenao_api_key: string;
@@ -35,7 +37,8 @@ class Settings implements ISetting {
             hostname, 
             database_url, 
             saucenao_api_key, 
-            initialSetup, 
+            initialSetup,
+            use_mongodb,
             search_diff_sites, 
             pixiv_download_first_image_only, 
             downloadFolder } = JSON.parse(
@@ -43,8 +46,9 @@ class Settings implements ISetting {
         ) as ISetting;
         this.ip = !!ip ? ip : "";
         this.initialSetup = initialSetup ?? false;
+        this.use_mongodb = use_mongodb ?? false;
         this.port = port ?? 2234;
-        this.database_url = database_url ?? "mongodb://localhost:27017/moefetch";
+        this.database_url = database_url ?? "";
         this.downloadFolder = downloadFolder ?? '../files'
         this.hostname = hostname ?? "http://127.0.0.1:2234";
         this.saucenao_api_key = saucenao_api_key ?? "";

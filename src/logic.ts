@@ -15,7 +15,7 @@ import needle from "needle";
 
 
 import type {
-  IAnimePic,
+  IMongoDBEntry,
   IRequestOptions,
   INewAnimePic,
   IPostLinks,
@@ -165,15 +165,16 @@ public async processInput(input: string | File, album: string) {
     data: {},
     indexer: 0,
     isNSFW: false,
+    imagesDataArray: []
   };
   let providedHeadersObj: RequestInit | undefined = undefined
   if (typeof input == "string"){
     resultantData = await this.processUrl(input);
-    
-    resultantData.imagesDataArray = await this.downloadAndGetFilePaths(resultantData, album)
+    const res = await this.downloadAndGetFilePaths(resultantData, album)
+    if ( res ) resultantData.imagesDataArray = res
   }
   else {
-    resultantData = (await this.getImageDataFromRandomUrl(input)) ?? {data: {}, indexer: 0}
+    resultantData = (await this.getImageDataFromRandomUrl(input)) ?? {data: {}, indexer: 0, imagesDataArray: []}
   }
   return resultantData;
 }
@@ -189,6 +190,7 @@ public async processPixivId(id: string, arrayIndexer?: number) {
     isNSFW: false,
     indexer: arrayIndexer ?? 0,
     tags: [],
+    imagesDataArray: []
   };
   const pixivPostData = await this.getPixivImageData(id, arrayIndexer);
   
@@ -230,7 +232,8 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
   let resultantData: INewAnimePic = {
     data: {},
     indexer: 0,
-    tags: []
+    tags: [],
+    imagesDataArray: []
   };
   let IPostLinksObj: IPostLinks = {};
   let idsObj:IPostIds = {};
@@ -301,6 +304,7 @@ public  checkPixivImageUrlValid(inputUrl: string) {
       data: {},
       isNSFW: false,
       indexer: 0,
+      imagesDataArray: []
     };
 
       const link = new URL(inputUrl);
@@ -318,11 +322,11 @@ public  checkPixivImageUrlValid(inputUrl: string) {
           const arrayIndexer = Number.parseInt(pixivPostId.substring(pixivPostId.search(/[^0-9]/) + 2, pixivPostId.indexOf('.')))
           pixivPostId = pixivPostId.substring(0, pixivPostId.search(/[^0-9]/));
           const isValid = ((await this.checkPixivImageUrlValid(inputUrl)) == "OK");
-            console.log(arrayIndexer)
           if (isValid) {
             const imgRes = await this.getImageResolution(inputUrl)
             resultantData = (await this.processPixivId(pixivPostId, arrayIndexer)) ?? {
               data: {},
+              imagesDataArray: [],
               urlsArray: [{
                 imageUrl: inputUrl,
                 thumbnailUrl: inputUrl,
@@ -345,13 +349,13 @@ public  checkPixivImageUrlValid(inputUrl: string) {
             inputUrl.lastIndexOf(
               inputUrl.includes('illust_id=') ? '=' : '/'
             ) + 1);
-            resultantData = (await this.processPixivId(pixivPostId)) ?? { data: {}, indexer: 0};
+            resultantData = (await this.processPixivId(pixivPostId)) ?? { data: {}, indexer: 0, imagesDataArray: []};
           break;
         case "yande.re": 
         case "danbooru.donmai.us": // note add pools example https://danbooru.donmai.us/pools/01
           if (link.pathname.startsWith('/post')) {
             resultantData = (await this.processBooru(inputUrl, 
-              link.hostname.substring(0 , link.hostname.indexOf('.')) as 'danbooru' | 'yande')) ?? { data: {}, indexer: 0};
+              link.hostname.substring(0 , link.hostname.indexOf('.')) as 'danbooru' | 'yande')) ?? { data: {}, indexer: 0, imagesDataArray: []};
             } else
           if (link.pathname.startsWith('/pools')) {
             
@@ -364,7 +368,6 @@ public  checkPixivImageUrlValid(inputUrl: string) {
           {
             if (settings.saucenao_api_key) {
               const sauceParseRes = await this.getImageDataFromRandomUrl(inputUrl)
-              console.log(sauceParseRes);
               
               if (sauceParseRes) resultantData = sauceParseRes;
               else resultantData = {
@@ -425,7 +428,7 @@ public  checkPixivImageUrlValid(inputUrl: string) {
           }
 
           //console.log(index + " : ", animePicPerExtURL)
-          console.log(bestPic?.urlsArray?.length);
+          
           
           if (item.data.material) { 
             originalPostResult = {
@@ -797,7 +800,7 @@ public  checkPixivImageUrlValid(inputUrl: string) {
       providedHeaders?: RequestInit
   }
   ) {
-    console.log(JSON.stringify(options?.providedHeaders))
+    
     let returnPath: string | undefined = '';
 
     const fileExtension = url.substring(url.lastIndexOf('.'))
@@ -823,7 +826,6 @@ public  checkPixivImageUrlValid(inputUrl: string) {
     * checks if a directory exists and returns true if it does else false;
     */
     public checkDirectory(path: string) {
-      console.log("path: ", path)
       if (!fs.existsSync(path)) {
         return false;
       } else return true;

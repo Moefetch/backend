@@ -46,7 +46,7 @@ export interface IFilteredSaucenaoResult  {
     imageSize?: ISizeCalculationResult;
 }
 
-export interface ITableOfContentsMongo extends mongoose.Document {
+export interface IAlbumDictionaryItemMongo extends mongoose.Document {
     albumCoverImage: string;
     name: string;
     estimatedPicCount?: number;
@@ -58,7 +58,7 @@ export interface ITableOfContentsMongo extends mongoose.Document {
 
 export type AlbumSchemaType = "Anime Pic";
 
-export interface ITableOfContents {
+export interface IAlbumDictionaryItem {
     albumCoverImage: string | File;
     name: string;
     uuid: string;
@@ -67,6 +67,13 @@ export interface ITableOfContents {
     isHidden: boolean;
 }
 
+export interface IFilterObj {
+    nameIncludes?: string;
+    artists?: string[];
+    tags?: string[];
+    showHidden?: boolean;
+    showNSFW?: boolean;
+}
 
 export interface INewPic {
     file?: string;
@@ -76,8 +83,6 @@ export interface INewPic {
     has_results?: boolean;
     type?: AlbumSchemaType;
 }
-
-
 
 export interface ITagsObject {
     pixiv?: IPixivTag[];
@@ -94,19 +99,44 @@ export interface IImageDataArray  {
     thumbnail_file: string;
     imageSize?: ISizeCalculationResult;
 }
-export interface IAnimePic extends mongoose.Document {
+export interface IDBEntry {
     id: string;
     indexer: number;
+    name?: string;
     imagesDataArray: IImageDataArray[];
     alternative_names?: string[];
-    oldFile?: string;
+    oldImagesDataArray?: IImageDataArray[];
     album: string;
     //tags_pixiv?: string[];
     //tags_danbooru?: string[];
     artists?: string[];
     storedResult?: string;
-    links: IPostLinks;
-    ids: IPostIds;
+    links?: IPostLinks;
+    ids?: IPostIds;
+    isHidden: boolean;
+    isNSFW: boolean;
+    hasResults?: boolean;
+    //pixiv_post_id?: number;
+
+    //compatability with INewAnimePic
+    tags?: string[];
+    //imageSize?: ISizeCalculationResult;
+}
+
+export interface IMongoDBEntry extends mongoose.Document {
+    id: string;
+    indexer: number;
+    name?: string;
+    imagesDataArray: IImageDataArray[];
+    alternative_names?: string[];
+    oldImagesDataArray?: IImageDataArray[];
+    album: string;
+    //tags_pixiv?: string[];
+    //tags_danbooru?: string[];
+    artists?: string[];
+    storedResult?: string;
+    links?: IPostLinks;
+    ids?: IPostIds;
     isHidden: boolean;
     isNSFW: boolean;
     hasResults?: boolean;
@@ -121,7 +151,7 @@ export interface IAnimePic extends mongoose.Document {
 export interface INewAnimePic {
     indexer: number;
     
-    imagesDataArray?: IImageDataArray[];
+    imagesDataArray: IImageDataArray[];
     
     storedResult?: "danbooru" | "pixiv" | 'yande';
     //parsed from results

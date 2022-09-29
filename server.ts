@@ -7,43 +7,34 @@ import chalk from "chalk";
 import { v4 as uuidv4 } from "uuid";
 import { upload } from "./middlewares/upload";
 import Logic from "./src/logic";
-import type { CreateCollectionOptions } from "mongodb";
+import MongoDatabaseLogic from "./src/mongoDatabaseLogic";
+import NeDBDatabaseLogic from "./src/nedbDatabaseLogic";
+
 
 let logic = new Logic(settings);
 
+const database = settings.database_url ? (new MongoDatabaseLogic(settings.database_url)) : (new NeDBDatabaseLogic()) ;
+
 function saveSettings() {
   fs.writeFileSync("./settings.json", JSON.stringify(settings, null, 2));
-  console.log(settings);
+  console.log('New settings: ', settings);
   logic = new Logic(settings);
 }
 
-console.log(settings);
-/////////////////////////////////////////////// grounds for testing if dd connection can be established
-import mongoose, { Mongoose } from "mongoose";
-let serverState;
+console.log('Settings: ', settings);
 
-mongoose.connection.on("error", function (error) {
-  console.log("error: ", error);
-});
-mongoose.connection.on("open", function (ref) {
-  console.log("Connected to Mongo server...");
-});
-
-const dbConnection = mongoose.connect(settings.database_url);
-
-///////////////////////////////////////////////////////////////////
-import TableOfContentsModel from "./models/TableOfContents";
 
 //import AnimePic from "./models/AnimePic";
 
-import CreateAnimePicModel from "./models/schemas/CreateAnimePicModel";
+import CreateAnimePicModel from "./models/schemas/CreateMongoDBEntryModel";
 import {
-  ITableOfContents,
+  IAlbumDictionaryItem,
   AlbumSchemaType,
   INewPic,
-  IAnimePic,
+  IMongoDBEntry,
   IErrorObject,
 } from "types";
+import e from "express";
 
 const modelsDictionary = {
   "Anime Pic": CreateAnimePicModel,
@@ -54,14 +45,6 @@ let stroredModels: any = {
 
   },
 };
-
-function typesOfModelsDictionary<T>(type: AlbumSchemaType, name: string): mongoose.Model<T> {
-  if (!stroredModels[type] || !stroredModels[type][name]) { 
-    const newModel = modelsDictionary[type](name);
-    stroredModels[type][name] = newModel;
-  }
-  return stroredModels[type][name];
-}
 
 const typesOfModels = ["Anime Pic"];
 
@@ -88,7 +71,7 @@ class backendServer {
   constructor() {
     this.express = express();
     this.server = http.createServer(this.express);
-    console.log(this.backendURL);
+    console.log('Backend URL: ', this.backendURL);
 
     this.registerExpressRoutes();
 
@@ -108,83 +91,13 @@ class backendServer {
     this.express.use(express.json());
     this.express.use(express.static(settings.downloadFolder));
 
-    this.express.post("/force-save", async (req, res) => {
-      console.log(req);
-      return res.status(200).json({ sex: "sex" });
-    });
-    this.express.post("/check-status", async (req, res) => {
-      return res.status(200).json({ sex: "sex" });
-    });
-
-    this.express.post("/add-picture", async (req, res) => {
-      const { url, album, type, useSauceNao, isHidden } = req.body; //remember to do .split('\n') and for each to get the stuff bla bla
-      const newModelEntry = typesOfModelsDictionary<IAnimePic>((type as AlbumSchemaType),(album));
-
-      let urlsArray: string[] = url.split("\n").filter( (a:string) => a != "");
-      const forLoopPromise = new Promise(async (resolve, reject) => {
-        urlsArray.forEach(async (value: string, i: number) => {
-          const entry = await logic.processInput(value, album);
-          console.log(JSON.stringify({
-            ...entry,
-            id: uuidv4(),
-            album: album,
-          }))
-          if (entry.imagesDataArray?.length) {
-            const newEntry = new newModelEntry({
-              ...entry,
-              id: uuidv4(),
-              album: album,
-              isHidden: (isHidden != '')
-            }); 
-            newEntry.save();
-          }
-          
-          /*             file: url,
-            thumbnail_file: url,
-            links: {discord: url},
-            has_results: false,
-
- */
-          console.log(i);
-          if (i == urlsArray.length - 1) resolve;
-        });
-      });
-      await forLoopPromise;
-      console.log("out of loop");
-
-      const newNumOfPic = await newModelEntry.countDocuments();
-      const albumUpdate = await TableOfContentsModel.findOne({ name: album });
-      if (albumUpdate) {
-        albumUpdate.estimatedPicCount = newNumOfPic; // maybe do ++ instead for less cpu cylces but for now
-
-        await albumUpdate.save();
-      }
-    });
-
-    this.express.get("/album/:album", async (req, res) => {
-      const albumUUID = req.params.album; //i think i figured this out, old message -> imma stop here cus idk how to get what model to use from this
-      const album = (await TableOfContentsModel.findOne({
-        uuid: albumUUID,
-      })) as ITableOfContents;
-      if (album) {
-      const response = await typesOfModelsDictionary<IAnimePic>(
-        album.type as AlbumSchemaType,
-        album.name).find();
-      res.status(200).json(response)
-      } else {
-        res.status(404)
-      } 
-    });
-
     this.express.post(
       "/create-album",
       upload.single("album_thumbnail_file"),
       async (req, res) => {
-        console.log(req)
         const { type, name, isHidden } = req.body;
-        console.log(isHidden)
         let album_thumbnail_files;
-        const newAlbum: ITableOfContents = {
+        const newAlbum: IAlbumDictionaryItem = {
           name: name as string,
           albumCoverImage: "album_thumbnail_files/image.svg",
           type: type as AlbumSchemaType,
@@ -197,25 +110,73 @@ class backendServer {
           newAlbum.albumCoverImage = album_thumbnail_files.filename;
         }
 
-        const tableOfContentsEntry = new TableOfContentsModel(newAlbum);
-        tableOfContentsEntry.save();
+        database.createAlbum(newAlbum);
 
-        mongoose.connection.createCollection(newAlbum.name);
         res.status(200).json(newAlbum);
       }
     );
+    this.express.post("/force-save", async (req, res) => {
+      console.log(req);
+      return res.status(200).json({ sex: "sex" });
+    });
+    this.express.post("/check-status", async (req, res) => {
+      return res.status(200).json({ sex: "sex" });
+    });
+
+    this.express.post("/add-picture", async (req, res) => {
+      const { url, album, type, useSauceNao, isHidden } = req.body; //remember to do .split('\n') and for each to get the stuff bla bla
+      
+
+      let urlsArray: string[] = url.split("\n").filter( (a:string) => a != "");
+      const forLoopPromise = new Promise(async (resolve, reject) => {
+        urlsArray.forEach(async (value: string, i: number) => {
+          const entry = await logic.processInput(value, album);
+          if (entry.imagesDataArray?.length) {
+
+            database.addEntry(album, {
+              ...entry,
+              isNSFW: entry.isNSFW ?? false,
+              id: uuidv4(),
+              album: album,
+              isHidden: isHidden
+            })
+          }
+          
+          /*             file: url,
+            thumbnail_file: url,
+            links: {discord: url},
+            has_results: false,
+
+ */
+          if (i == urlsArray.length - 1) resolve;
+        });
+      });
+      await forLoopPromise;
+      database.updateCountEntriesInAlbumByName(album)
+    });
+
+    this.express.get("/album/:album", async (req, res) => {
+      const albumUUID = req.params.album; //i think i figured this out, old message -> imma stop here cus idk how to get what model to use from this
+      
+      const picsInAlbum = await database.getEntriesInAlbumByUUIDAndFilter(albumUUID, {})
+      
+      if (picsInAlbum) {
+        res.status(200).json(picsInAlbum)
+      } else {
+        res.status(404)
+      } 
+    });
+
     this.express.get("/albums", async (req, res) => {
-      //table is a table of contents aka all of the albums or whatever databases
-      const albums = await TableOfContentsModel.find<ITableOfContents>();
-      /* const wuh = await (await dbConnection).connection.db.listCollections().toArray()
-    console.log(wuh); */
+      
+      const albums = await database.getAlbums()
       return res.status(200).json(albums);
     });
 
     this.express.post("/connection-test", async (req, res) => {
-      console.log(settings);
       const {
         database_url,
+        use_mongodb,
         search_diff_sites,
         saucenao_api_key,
         pixiv_download_first_image_only,
@@ -233,23 +194,16 @@ class backendServer {
           errorsObject.saucenaoApiKeyError =
             "SauceNao api key invalid or expired";
       }
-
-      const mongodbTestConnection = await mongoose
-        .createConnection(database_url)
-        .asPromise()
-        .then((connection) => {
+      if (use_mongodb) {
+        const canConnect = await MongoDatabaseLogic.testMongoDBConnection(database_url);
+        if (canConnect) {  
           settings.database_url = database_url;
-
-          saveSettings();
-          connection.close();
           errorsObject.databaseUrlError = "";
-          return res.status(200).json(errorsObject);
-        })
-        .catch(() => {
-          saveSettings();
-          errorsObject.databaseUrlError = "Unable to connect to database";
-          return res.status(200).json(errorsObject);
-        });
+        }
+        else errorsObject.databaseUrlError = "Unable to connect to database";
+      }
+      saveSettings();
+      return res.status(200).json(errorsObject);
     });
 
     this.express.get("/types-of-models", async (req, res) => {

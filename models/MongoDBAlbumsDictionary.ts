@@ -1,13 +1,9 @@
 import mongoose, { Schema } from "mongoose";
 
-import { ITableOfContentsMongo } from "../types";
-import settings from '../settings.json'
+import { IAlbumDictionaryItemMongo } from "../types";
 
-const databasePath = settings.database_url;
 
-mongoose.connect(databasePath);
-
-const schema = new Schema<ITableOfContentsMongo>(
+const schema = new Schema<IAlbumDictionaryItemMongo>(
     {
         uuid: { type: String, required: true },
         name: {type: String, required: false},
@@ -15,8 +11,11 @@ const schema = new Schema<ITableOfContentsMongo>(
         albumCoverImage: {type: String, required: true},
         type: {type: String, required: true},
         isHidden: {type: Boolean, required: true},
+    },
+    {
+        collection: "Albums Dictionary"
     }
 )
  
-const TableOfContentsModel = mongoose.model<ITableOfContentsMongo>("TableOfContents", schema);
-export default TableOfContentsModel;
+const AlbumsDictionary = mongoose.model<IAlbumDictionaryItemMongo>("Albums Dictionary", schema);
+export default AlbumsDictionary;
