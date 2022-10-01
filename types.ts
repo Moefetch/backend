@@ -59,6 +59,7 @@ export interface IAlbumDictionaryItemMongo extends mongoose.Document {
 export type AlbumSchemaType = "Anime Pic";
 
 export interface IAlbumDictionaryItem {
+    _id?: string;
     albumCoverImage: string | File;
     name: string;
     uuid: string;
@@ -120,6 +121,8 @@ export interface IDBEntry {
 
     //compatability with INewAnimePic
     tags?: string[];
+    date_added?: number;
+    date_created?: number;
     //imageSize?: ISizeCalculationResult;
 }
 
@@ -144,36 +147,47 @@ export interface IMongoDBEntry extends mongoose.Document {
 
     //compatability with INewAnimePic
     tags?: string[];
+    date_added?: number;
+    date_created?: number;
     //imageSize?: ISizeCalculationResult;
 }
 
 
 export interface INewAnimePic {
+    //for mongo compatablity 
+    id?: string;
     indexer: number;
-    
+
     imagesDataArray: IImageDataArray[];
     
-    storedResult?: "danbooru" | "pixiv" | 'yande';
-    //parsed from results
-    urlsArray?: urlsArray[];
-    tags?: string[];
+    
+    album?: string;
+    
+    
     artists?: string[];
+    storedResult?: "danbooru" | "pixiv" | 'yande';
     links?: IPostLinks;
     ids?: IPostIds;
+    //parsed from results
+    isNSFW?: boolean;
+    has_results?: boolean;
+    
+    
+    
+    tags?: string[];
+    date_added?: number;
+    date_created?: number;
+    //doesnt exist in end result
+    urlsArray?: urlsArray[];
     requestOptions?: IRequestOptions;
     imageSize?: ISizeCalculationResult;
-    has_results?: boolean;
-    isNSFW?: boolean;
+
     //resulting data from parsing the sites
     data: {
         danbooru?: IDanbooruResponse;
         yande?:IDanbooruResponse;
         pixiv?: IPixivResponse;
     }
-
-    //for mongo compatablity 
-    id?: string;
-    album?: string;
 }
 
 interface urlsArray {
@@ -269,10 +283,10 @@ export interface IDanbooruResponse {
     imageUrl: string;
     image_width: number;
     image_height: number;
-    createDate: string;
+    createDate: number;
     rating: string;
     isNsfw: boolean;
-    updateDate: string;
+    updateDate: number;
     previewImageUrl: string;
     tags?: IDanbooruTags;
     requestOptions?: IRequestOptions

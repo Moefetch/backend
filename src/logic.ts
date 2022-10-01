@@ -250,6 +250,7 @@ public async processBooru(inputUrl: string, type: "danbooru" | "yande") {
       }]
       IPostLinksObj[type] = inputUrl;
       resultantData.links = IPostLinksObj;
+      resultantData.date_created = res.createDate;
       resultantData.imageSize = {
         width: res.image_width,
         height: res.image_height 
@@ -493,8 +494,8 @@ public  checkPixivImageUrlValid(inputUrl: string) {
     return {
       imageUrl: json.file_url,
       id: json.id,
-      createDate: json.created_at,
-      updateDate: json.updated_at,
+      createDate: (new Date(json.created_at)).getTime(),
+      updateDate: (new Date(json.updated_at)).getTime(),
       previewImageUrl: json.preview_file_url,
       rating: json.rating,
       isNsfw: json.rating != 'g',
@@ -561,10 +562,10 @@ public  checkPixivImageUrlValid(inputUrl: string) {
       });
       
       return {
-        
+      id: json.posts[0].id,
       imageUrl: json.posts[0].file_url,
-      createDate: (new Date(json.posts[0].created_at * 1000).toISOString()),
-      updateDate: (new Date(json.posts[0].updated_at * 1000).toISOString()),
+      createDate: json.posts[0].created_at * 1000,
+      updateDate: json.posts[0].updated_at * 1000,
       previewImageUrl: json.posts[0].preview_url,
       rating: json.posts[0].rating,
       isNsfw: json.posts[0].rating != 's',

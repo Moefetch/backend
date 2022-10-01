@@ -1,4 +1,4 @@
-
+import nedbDatabase from './src/nedbDatabaseLogic'
 import settings from './settings';
 
 import Logic from "./src/logic"
@@ -31,8 +31,11 @@ let headersObj: RequestInit =  {
 
 //https://i.pximg.net/img-master/img/2022/04/26/00/00/12/97882826_p0_master1200.jpg
 //https://i.pximg.net/img-original/img/2022/07/19/19/55/54/99843431_p0.png
+//const nedb = new nedbDatabase()
 async function ass() {
-    console.log('test ', ( (await logic.processBooru('https://danbooru.donmai.us/posts/636884?q=meme.json', 'danbooru'))))
+    console.log('test ', ( (await logic.getImageDataFromRandomUrl('https://cdn.discordapp.com/attachments/874159310962319360/1020426615097921576/unknown.png'))))
+    console.log(
     
+    )
 }
 ass()

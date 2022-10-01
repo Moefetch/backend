@@ -11,6 +11,9 @@ export interface ISetting {
     saucenao_api_key: string;
     search_diff_sites: boolean;
     pixiv_download_first_image_only: boolean;
+    show_nsfw: boolean,
+    blur_nsfw: boolean,
+    show_hidden: boolean,
 }
 
 /**
@@ -28,6 +31,9 @@ class Settings implements ISetting {
     public saucenao_api_key: string;
     public search_diff_sites: boolean;
     public pixiv_download_first_image_only: boolean;
+    public show_nsfw: boolean;
+    public blur_nsfw: boolean;
+    public show_hidden: boolean;
 
 
     constructor(){
@@ -41,6 +47,9 @@ class Settings implements ISetting {
             use_mongodb,
             search_diff_sites, 
             pixiv_download_first_image_only, 
+            show_nsfw,
+            blur_nsfw,
+            show_hidden,
             downloadFolder } = JSON.parse(
             fs.readFileSync("./settings.json", { encoding: "utf-8" })
         ) as ISetting;
@@ -54,6 +63,10 @@ class Settings implements ISetting {
         this.saucenao_api_key = saucenao_api_key ?? "";
         this.search_diff_sites = search_diff_sites ?? false;
         this.pixiv_download_first_image_only = pixiv_download_first_image_only ?? false;
+        this.show_nsfw = show_nsfw ?? true;
+        this.blur_nsfw = blur_nsfw ?? true;
+        this.show_hidden = show_hidden ?? false;
+
 
         this.save();
         

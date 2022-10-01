@@ -75,22 +75,24 @@ public async getAlbums() {
    /**
     * get Entries and filter
     */
-    public async getEntriesInAlbumByUUIDAndFilter(albumUUID: string, initialFilterObject: IFilterObj): Promise<IDBEntry[]> {
+    public async getEntriesInAlbumByUUIDAndFilter(albumUUID: string, initialFilterObject: IFilterObj, sortObj?: any): Promise<IDBEntry[]> {
       const filterObject: any = {
       }
-      initialFilterObject.nameIncludes? filterObject.name = {$in: initialFilterObject.nameIncludes} : {},
-      initialFilterObject.tags? filterObject.tags = {$in: initialFilterObject.tags} : {},
-      initialFilterObject.artists ? filterObject.artists = {$in: initialFilterObject.artists} : {},
-      initialFilterObject.showHidden ? {} : (filterObject.isHidden = false)
-      initialFilterObject.showNSFW ? {} : (filterObject.isNSFW = false)
+      initialFilterObject.nameIncludes? filterObject.name = {$in: initialFilterObject.nameIncludes} : {};
+      initialFilterObject.tags? filterObject.tags = {$in: initialFilterObject.tags} : {};
+      initialFilterObject.artists ? filterObject.artists = {$in: initialFilterObject.artists} : {};
+      (initialFilterObject.showHidden == true) ? {} : (filterObject.isHidden = false);
+      (initialFilterObject.showNSFW == true) ? {} : (filterObject.isNSFW = false);
   
        return new Promise<IDBEntry[]>((resolve, reject) => {
           AlbumsDictionaryDB.findOne({
             uuid: albumUUID,
           }, (err, doc) => {
-            if (!err) albumsDictionaryMap(doc.name).find(filterObject).exec( (err, docs) => {
+            
+            
+            if (!err) albumsDictionaryMap(doc.name).find(filterObject).sort(sortObj).exec( (err, docs) => {
               if (!err) resolve(docs)
-              else console.log(err);
+              else reject(err);
             });
           });
        })
@@ -121,10 +123,23 @@ public async getAlbums() {
   * addPicture
   */
   public addEntry(album: string, entryOBJ: IDBEntry) {
+    const convertedEntry = this.convertIAnimePicToIEntry(entryOBJ)
     const newModelEntry = albumsDictionaryMap(album);
-    newModelEntry.insert(entryOBJ);
+    newModelEntry.insert(convertedEntry);
+    this.updateCountEntriesInAlbumByName(album);
   }
   
+ /**
+  * convertIAnimePicToIEntry
+  */
+ public convertIAnimePicToIEntry(entryOBJ: any) {
+  const exportEntry = entryOBJ;
+  delete exportEntry.data;
+  delete exportEntry.urlsArray;
+  delete exportEntry.requestOptions;
+  delete exportEntry.imageSize;
+  return exportEntry as IDBEntry;
+ }
 
   /**
    * updateCountEntriesInAllAlbums
@@ -134,13 +149,7 @@ public async getAlbums() {
     AlbumsDictionaryDB.find({}).exec((err, docs) => {
       if (!err) {
         docs.forEach(async (doc) => {
-          const newDoc = doc;
-        const newModelEntry = albumsDictionaryMap(doc.name);  
-        newModelEntry.count({}, (err, n) => {
-          if (!err) newDoc.estimatedPicCount = n;
-          else console.log(err);
-        })
-        AlbumsDictionaryDB.update( doc, newDoc)
+          this.updateCountEntriesInAlbum(doc);
         })
       }
     })
@@ -165,22 +174,28 @@ public async getAlbums() {
    * updateCountEntriesInAlbumByName 
    */
    public async updateCountEntriesInAlbumByName(albumName: string) {
+    console.log('part 1 ', albumName);
+    
     AlbumsDictionaryDB.findOne({
       name: albumName,
     }, (err, doc) => {
+    console.log('part 2 ', doc);
+
       if (!err) this.updateCountEntriesInAlbum(doc)
       else console.log(err);
     });
   }
 
   public async updateCountEntriesInAlbum(albumDoc: IAlbumDictionaryItem){
+    console.log('part 3 ', albumDoc);
 
     const album = albumsDictionaryMap(albumDoc.name);
     album.count({}, (err, entryNumber) => {
       if (!err) {
-        const newDoc = albumDoc;
-        newDoc.estimatedPicCount = entryNumber;
-        AlbumsDictionaryDB.update(albumDoc, newDoc)
+
+        console.log('part 4 ', albumDoc);
+        
+        AlbumsDictionaryDB.update({_id: albumDoc._id}, {$set: {estimatedPicCount: entryNumber}})
       }
       else console.log(err);
       

@@ -60,7 +60,7 @@ const errorsObject: IErrorObject = {
   databaseUrlError: "",
   saucenaoApiKeyError: "",
 };
-
+database.updateCountEntriesInAllAlbums()
 class backendServer {
   public express: Express;
   public server: http.Server;
@@ -103,7 +103,7 @@ class backendServer {
           type: type as AlbumSchemaType,
           uuid: uuidv4(),
           estimatedPicCount: 0,
-          isHidden: (isHidden != '')
+          isHidden: (isHidden == true)
         };
         if (req.file) {
           album_thumbnail_files = req.file as Express.Multer.File;
@@ -138,6 +138,7 @@ class backendServer {
               isNSFW: entry.isNSFW ?? false,
               id: uuidv4(),
               album: album,
+              date_added: (new Date()).getTime(),
               isHidden: isHidden
             })
           }
@@ -152,13 +153,13 @@ class backendServer {
         });
       });
       await forLoopPromise;
-      database.updateCountEntriesInAlbumByName(album)
+      //database.updateCountEntriesInAlbumByName(album)
     });
 
     this.express.get("/album/:album", async (req, res) => {
       const albumUUID = req.params.album; //i think i figured this out, old message -> imma stop here cus idk how to get what model to use from this
       
-      const picsInAlbum = await database.getEntriesInAlbumByUUIDAndFilter(albumUUID, {})
+      const picsInAlbum = await database.getEntriesInAlbumByUUIDAndFilter(albumUUID, {showNSFW: settings.show_nsfw, showHidden: settings.show_hidden})
       
       if (picsInAlbum) {
         res.status(200).json(picsInAlbum)
@@ -180,9 +181,16 @@ class backendServer {
         search_diff_sites,
         saucenao_api_key,
         pixiv_download_first_image_only,
+        show_nsfw,
+        blur_nsfw,
+        show_hidden,
       } = req.body;
 
       settings.search_diff_sites = search_diff_sites;
+      settings.show_nsfw = show_nsfw;
+      settings.blur_nsfw = blur_nsfw;
+      settings.show_hidden = show_hidden;
+
       settings.pixiv_download_first_image_only =
         pixiv_download_first_image_only;
       if (search_diff_sites) {
