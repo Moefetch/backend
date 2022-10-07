@@ -33,6 +33,7 @@ import {
   INewPic,
   IMongoDBEntry,
   IErrorObject,
+  IFilterObj,
 } from "types";
 import e from "express";
 
@@ -140,7 +141,8 @@ class backendServer {
               album: album,
               date_added: (new Date()).getTime(),
               isHidden: isHidden
-            })
+            }, type
+            )
           }
           
           /*             file: url,
@@ -156,12 +158,24 @@ class backendServer {
       //database.updateCountEntriesInAlbumByName(album)
     });
 
-    this.express.get("/album/:album", async (req, res) => {
-      const albumUUID = req.params.album; //i think i figured this out, old message -> imma stop here cus idk how to get what model to use from this
+    this.express.post("/search", async (req, res) => {
+      const {album, options} = req.body; 
+      const { sortBy, tags, nameIncludes, showNSFW, showHidden } = options;
       
-      const picsInAlbum = await database.getEntriesInAlbumByUUIDAndFilter(albumUUID, {showNSFW: settings.show_nsfw, showHidden: settings.show_hidden})
+      let sortOBJ: any = {}
+      sortOBJ[sortBy] = 1;
+
+      const filterOBJ: IFilterObj = { 
+        showNSFW: showNSFW, 
+        showHidden: showHidden,
+        tags: tags,
+        nameIncludes: nameIncludes,
+      }
+
+
+      const picsInAlbum = await database.getEntriesInAlbumByUUIDAndFilter(album, filterOBJ , sortOBJ)
       
-      if (picsInAlbum) {
+      if (picsInAlbum && picsInAlbum.length) {
         res.status(200).json(picsInAlbum)
       } else {
         res.status(404)
@@ -217,6 +231,27 @@ class backendServer {
     this.express.get("/types-of-models", async (req, res) => {
       return res.status(200).json(typesOfModels);
     });
+
+    this.express.delete('/delete-entry-by-id', async (req, res) => {
+      const { album, entriesIDs } = req.body      
+      database.deleteEntries(album, entriesIDs);
+      database.updateCountEntriesInAlbumByName(album)
+    })
+
+    this.express.post("/handle-hide", (req, res) => {
+      const { album, entriesIDs, hide } = req.body;
+      database.handleHiding(album, entriesIDs, hide)
+    })
+
+    this.express.post("/autocomplete-tags", (req, res) => {
+      const {tagSearch, type} = req.body;
+
+      database.getTagsForAutocomplete(tagSearch, type).then(tags => {
+        if (tags) {
+          res.status(200).json({tags: tags});
+        } else res.status(200).json({tags: []})
+      })
+    })
   }
 }
 export default new backendServer();

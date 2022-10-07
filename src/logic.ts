@@ -392,6 +392,8 @@ public  checkPixivImageUrlValid(inputUrl: string) {
 
     if (this.sauceNao) {
       const { resultArray } = await this.sauceNao.getSauce(url);
+      
+      
       let filteredResults: IFilteredSaucenaoResult = {};
 
       let tagsCollective: Set<string> = new Set<string>();
@@ -400,8 +402,8 @@ public  checkPixivImageUrlValid(inputUrl: string) {
       let originalPostAlternative: IFilteredSaucenaoResult = {};
 
       for (let index = 0; index < resultArray.length; index++) {
-        const item = resultArray[index]
-        if (Number.parseInt(item.header.similarity) > 80) {
+        const item = resultArray[index]  
+        if (Number.parseInt(item.header.similarity) > 80 && item.data.ext_urls) {
           const urlsToParse = item.data.ext_urls.filter(a => a.includes('pixiv') || a.includes('danbooru') || a.includes('yande'))
           let animePicPerExtURL: INewAnimePic[] = [];
           let bestPic: INewAnimePic | undefined;

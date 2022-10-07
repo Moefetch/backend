@@ -3,11 +3,19 @@ import type {
     IAlbumDictionaryItem,
     IFilterObj,
     IAlbumDictionaryItemMongo,
-    IDBEntry
+    IDBEntry,
+    AlbumSchemaType
 } from "../types"
 import AlbumsDictionaryDB from "../models/MongoDBAlbumsDictionary";
+
+import CreateTagsAutocompleteDBModel from "../models/schemas/CreateTagsAutocompleteDBModel";
+
 import CreateMongoDBEntryModel from "../models/schemas/CreateMongoDBEntryModel";
 import mongoose from "mongoose";
+const animePicTagsModel = CreateTagsAutocompleteDBModel("anime-pic-tags-db");
+const tagsDBDictionary = {
+  "Anime Pic": animePicTagsModel
+}
 
 
 let stroredModels: any = {
@@ -95,24 +103,36 @@ public async getAlbums() {
    public updateEntry(albumName: string, entryOBJ: IMongoDBEntry) {
     
     const newModelEntry = modelsDictionary(albumName);
-    newModelEntry.updateOne({id: entryOBJ.id }, entryOBJ);
+    return newModelEntry.updateOne({id: entryOBJ.id }, entryOBJ);
    }
 
+
+  /**
+  * handleHiding
+  */
+   public handleHiding(albumName: string, entriesIDs: string[], hide: boolean) {
+    const newModelEntry = modelsDictionary(albumName);
+    return newModelEntry.updateMany({id: {$in: entriesIDs} }, {$set: {isHidden: hide}})
+  }
+  
+
    /**
-    * deleteEntry
+    * deleteEntries
     */
-   public deleteEntry(album: string, entryID: string) {
-    const newModelEntry = modelsDictionary(album);
-    newModelEntry.deleteOne({id: entryID });
+   public deleteEntries(albumName: string, entriesIDs: string[]) {
+    const newModelEntry = modelsDictionary(albumName);
+    return newModelEntry.deleteMany({id: { $in: entriesIDs} })
    }
 
    /**
     * addPicture
     */
-   public addEntry(album: string, entryOBJ: IDBEntry) {
+   public addEntry(album: string, entryOBJ: IDBEntry, type: AlbumSchemaType) {
     const newModelEntry = modelsDictionary(album);
     const newEntry = new newModelEntry(entryOBJ);
     newEntry.save();
+    this.updateCountEntriesInAlbumByName(album);
+    entryOBJ.tags?.forEach(tag => this.addTagEntry(tag, type))
    }
 
   /**
@@ -187,6 +207,24 @@ public async getAlbums() {
     else return false;
   }
   
+  /**
+   * addTagEntry
+   */
+   public addTagEntry(tag: string, type: AlbumSchemaType, tagToUpdateTo?: string) {
+    const TagsAutocompleteDB = tagsDBDictionary[type];
+    TagsAutocompleteDB.updateOne({_id: tag}, {_id: tagToUpdateTo ?? tag}, {upsert: true})
+  }
+
+ /**
+  * getTagsForAutocomplete
+  */
+ public getTagsForAutocomplete(search: string, type: AlbumSchemaType) {
+  const searchRegex = RegExp(search)
+  const TagsAutocompleteDB = tagsDBDictionary[type];
+  return TagsAutocompleteDB.find({_id: {$regex: searchRegex}}).then(results => results.map(tag => tag._id))
+ }
+
+
   constructor(mongoDBURL: string) {
     mongoose.connect(mongoDBURL);
           

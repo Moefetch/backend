@@ -1,7 +1,9 @@
 import type { 
   IDBEntry,
   IAlbumDictionaryItem,
-  IFilterObj
+  IFilterObj,
+  ITagEntry,
+  AlbumSchemaType
 } from "../types";
 
 import nedb from "nedb";
@@ -12,6 +14,13 @@ import fs from 'fs';
 const baseDBURL = `${settings.downloadFolder}/database`;
 const AlbumsDictionaryDB = new nedb<IAlbumDictionaryItem>(`${baseDBURL}/AlbumsDictionary/AlbumsDictionary.db`)
 AlbumsDictionaryDB.loadDatabase()
+
+const AnimePicTagsDB = new nedb<ITagEntry>(`${baseDBURL}/Tags/AnimePicsTags.db`);
+AnimePicTagsDB.loadDatabase()
+
+const tagsDBDictionary = {
+  "Anime Pic": AnimePicTagsDB
+}
 
 
 let stroredAlbumDBs: any = {
@@ -81,8 +90,8 @@ public async getAlbums() {
       initialFilterObject.nameIncludes? filterObject.name = {$in: initialFilterObject.nameIncludes} : {};
       initialFilterObject.tags? filterObject.tags = {$in: initialFilterObject.tags} : {};
       initialFilterObject.artists ? filterObject.artists = {$in: initialFilterObject.artists} : {};
-      (initialFilterObject.showHidden == true) ? {} : (filterObject.isHidden = false);
-      (initialFilterObject.showNSFW == true) ? {} : (filterObject.isNSFW = false);
+      (initialFilterObject.showHidden) ? {} : (filterObject.isHidden = false);
+      (initialFilterObject.showNSFW ) ? {} : (filterObject.isNSFW = false);
   
        return new Promise<IDBEntry[]>((resolve, reject) => {
           AlbumsDictionaryDB.findOne({
@@ -106,27 +115,51 @@ public async getAlbums() {
   public updateEntry(albumName: string, entryOBJ: IDBEntry) {
   
   const newModelEntry = albumsDictionaryMap(albumName);
-  newModelEntry.update({id: entryOBJ.id }, entryOBJ);
+  return new Promise((resolve, reject) => {
+    newModelEntry.update({id: entryOBJ.id }, entryOBJ);
+  })
   }
+
+  
+  /**
+  * handleHiding
+  */
+   public handleHiding(albumName: string, entriesIDs: string[], hide: boolean) {
+  
+    const newModelEntry = albumsDictionaryMap(albumName);
+    return new Promise((resolve, reject) => {
+      newModelEntry.update({id: {$in: entriesIDs} }, {$set: {isHidden: hide}}, {multi: true}, (err, numOfUpdated) => {
+        err ? reject(err) : resolve(numOfUpdated)
+      })
+    })
+    }
+  
+
 
 
   /**
   * deleteEntry
   */
-  public deleteEntry(album: string, entryID: string) {
+  public deleteEntries(album: string, entriesIDs: string[]) {
     const newModelEntry = albumsDictionaryMap(album);
-    newModelEntry.remove({id: entryID });
+    return new Promise((resolve, reject)=>{
+      newModelEntry.remove({id: {$in: entriesIDs} }, {multi: true}, (err, n) =>{
+        err ? reject(err) : resolve(n)
+      });
+    })
   }
   
 
   /**
   * addPicture
   */
-  public addEntry(album: string, entryOBJ: IDBEntry) {
+  public addEntry(album: string, entryOBJ: IDBEntry, type: AlbumSchemaType) {
     const convertedEntry = this.convertIAnimePicToIEntry(entryOBJ)
     const newModelEntry = albumsDictionaryMap(album);
     newModelEntry.insert(convertedEntry);
     this.updateCountEntriesInAlbumByName(album);
+
+    convertedEntry.tags?.forEach(tag => this.addTagEntry(tag, type))
   }
   
  /**
@@ -174,33 +207,46 @@ public async getAlbums() {
    * updateCountEntriesInAlbumByName 
    */
    public async updateCountEntriesInAlbumByName(albumName: string) {
-    console.log('part 1 ', albumName);
-    
     AlbumsDictionaryDB.findOne({
       name: albumName,
     }, (err, doc) => {
-    console.log('part 2 ', doc);
-
       if (!err) this.updateCountEntriesInAlbum(doc)
       else console.log(err);
     });
   }
 
   public async updateCountEntriesInAlbum(albumDoc: IAlbumDictionaryItem){
-    console.log('part 3 ', albumDoc);
-
     const album = albumsDictionaryMap(albumDoc.name);
     album.count({}, (err, entryNumber) => {
       if (!err) {
 
-        console.log('part 4 ', albumDoc);
-        
         AlbumsDictionaryDB.update({_id: albumDoc._id}, {$set: {estimatedPicCount: entryNumber}})
       }
       else console.log(err);
       
     })
   }
+
+  /**
+   * addTagEntry
+   */
+  public addTagEntry(tag: string, type: AlbumSchemaType, tagToUpdateTo?: string) {
+    const AnimePicTagsDB = tagsDBDictionary[type];
+    AnimePicTagsDB.update({_id: tag}, {_id: tagToUpdateTo ?? tag}, {upsert: true})
+  }
+
+ /**
+  * getTagsForAutocomplete
+  */
+ public getTagsForAutocomplete(search: string, type: AlbumSchemaType) {
+  const AnimePicTagsDB = tagsDBDictionary[type];
+  const searchRegex = RegExp(search)
+  return new Promise<string[] | Error>((resolve, reject) => {
+    AnimePicTagsDB.find({_id: {$regex: searchRegex}}).exec((err, docs) => {
+    err ? reject(err) : resolve(docs.map(tag => tag._id))
+    })
+  })
+ }
 
 constructor(){
     

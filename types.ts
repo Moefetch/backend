@@ -68,6 +68,14 @@ export interface IAlbumDictionaryItem {
     isHidden: boolean;
 }
 
+export interface ITagEntry {
+    _id: string;
+}
+export interface ITagEntryMongo extends mongoose.Document {
+    _id: string;
+}
+
+
 export interface IFilterObj {
     nameIncludes?: string;
     artists?: string[];
