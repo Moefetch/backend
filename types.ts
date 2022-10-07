@@ -314,7 +314,7 @@ export interface IPixivTag {
     romaji?: string;
     enTranslation?: string;
 }
-import type {ISetting} from "settings";
+import type {ISetting} from "./settings";
 export type ISettings = ISetting;
 
 export type OutgoingHttpHeader = number | string | string[];

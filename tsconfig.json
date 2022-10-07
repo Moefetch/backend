@@ -6,7 +6,7 @@
     "skipLibCheck": true,
     "target": "ES2017",
     "moduleResolution": "node",
-    "outDir": "dist",
+    "outDir": "./dist",
     "sourceMap": true,
     "declaration": true,
     "module": "commonjs",
