@@ -59,23 +59,33 @@ public async deleteAlbumByName(albumName: string) {
 
 
 /**
- * deleteAlbum
+ * deleteAlbumsByUUIDS
  */
-public deleteAlbumByUUID(albumUUID: string) {
-  AlbumsDictionaryDB.findOne({uuid: albumUUID}, (err, doc) => {
-    this.deleteAlbumByName(doc.name);
+public deleteAlbumsByUUIDS(albumUUIDs: string[]) {
+  AlbumsDictionaryDB.find({uuid: {$in: albumUUIDs}}).exec((err, docs) => {
+    docs.forEach( album => this.deleteAlbumByName(album.name))
+    
   })
 }  
 
+/**
+ * hideAlbumsByUUIDs
+ */
+public handleHidingAlbumsByUUIDs(albumUUIDs: string[], hide: boolean) {
+  AlbumsDictionaryDB.update({uuid: {$in: albumUUIDs}}, {$set: {isHidden: hide}}, {multi: true}, (err, numberOfUpdated, upsert) => {
+    err ? console.log(err) : '';
+  })
+}
 
 /**
  * getAlbums
  */
-public async getAlbums() {
+public async getAlbums(showHidden: boolean) {
+const filter = showHidden ? {} : {isHidden: false};
  return new Promise<IAlbumDictionaryItem[]>((resolve, reject) => {
-    AlbumsDictionaryDB.find({}).exec(( err, docs ) => {
+    AlbumsDictionaryDB.find(filter).exec(( err, docs ) => {
       if (!err) resolve(docs);
-      else console.log(err);
+      else reject(err);
     })
   })
 }
@@ -99,7 +109,7 @@ public async getAlbums() {
           }, (err, doc) => {
             
             
-            if (!err) albumsDictionaryMap(doc.name).find(filterObject).sort(sortObj).exec( (err, docs) => {
+            if (!err && doc) albumsDictionaryMap(doc.name).find(filterObject).sort(sortObj).exec( (err, docs) => {
               if (!err) resolve(docs)
               else reject(err);
             });
@@ -122,9 +132,9 @@ public async getAlbums() {
 
   
   /**
-  * handleHiding
+  * handleHidingPicturesInAlbum
   */
-   public handleHiding(albumName: string, entriesIDs: string[], hide: boolean) {
+   public handleHidingPicturesInAlbum(albumName: string, entriesIDs: string[], hide: boolean) {
   
     const newModelEntry = albumsDictionaryMap(albumName);
     return new Promise((resolve, reject) => {
@@ -156,10 +166,11 @@ public async getAlbums() {
   public addEntry(album: string, entryOBJ: IDBEntry, type: AlbumSchemaType) {
     const convertedEntry = this.convertIAnimePicToIEntry(entryOBJ)
     const newModelEntry = albumsDictionaryMap(album);
-    newModelEntry.insert(convertedEntry);
-    this.updateCountEntriesInAlbumByName(album);
-
     convertedEntry.tags?.forEach(tag => this.addTagEntry(tag, type))
+    return new Promise<IDBEntry>((resolve, reject) => newModelEntry.insert(convertedEntry, (err, doc) => {
+      err ? reject(err) : resolve(doc) 
+      })
+    );
   }
   
  /**
@@ -220,7 +231,7 @@ public async getAlbums() {
     album.count({}, (err, entryNumber) => {
       if (!err) {
 
-        AlbumsDictionaryDB.update({_id: albumDoc._id}, {$set: {estimatedPicCount: entryNumber}})
+        AlbumsDictionaryDB.update({_id: albumDoc._id},{$set:  {estimatedPicCount: entryNumber}})
       }
       else console.log(err);
       
@@ -232,7 +243,7 @@ public async getAlbums() {
    */
   public addTagEntry(tag: string, type: AlbumSchemaType, tagToUpdateTo?: string) {
     const AnimePicTagsDB = tagsDBDictionary[type];
-    AnimePicTagsDB.update({_id: tag}, {_id: tagToUpdateTo ?? tag}, {upsert: true})
+    AnimePicTagsDB.update({_id: tag.toLocaleLowerCase()}, {_id: tagToUpdateTo?.toLocaleLowerCase() ?? tag}, {upsert: true})
   }
 
  /**
@@ -240,7 +251,7 @@ public async getAlbums() {
   */
  public getTagsForAutocomplete(search: string, type: AlbumSchemaType) {
   const AnimePicTagsDB = tagsDBDictionary[type];
-  const searchRegex = RegExp(search)
+  const searchRegex = RegExp(search);
   return new Promise<string[] | Error>((resolve, reject) => {
     AnimePicTagsDB.find({_id: {$regex: searchRegex}}).exec((err, docs) => {
     err ? reject(err) : resolve(docs.map(tag => tag._id))
@@ -248,8 +259,8 @@ public async getAlbums() {
   })
  }
 
-constructor(){
-    
-}
+  constructor(){
+      
+  }
 
 }

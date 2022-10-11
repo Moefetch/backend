@@ -56,21 +56,31 @@ public async deleteAlbumByName(albumName: string) {
   }
 
   /**
- * deleteAlbumByUUID
+ * deleteAlbumsByUUIDS
  */
-public async deleteAlbumByUUID(albumUUID: string) {
-  const album = await AlbumsDictionaryDB.findOne({uuid: albumUUID})
-  if (album) {
+public async deleteAlbumsByUUIDS(albumUUIDs: string[]) {
+  const albums = await AlbumsDictionaryDB.find({uuid: {$in: albumUUIDs}})
+  albums.forEach(album => {
     albumDeletionFunction(album.name);
-    album.deleteOne()
-  }
+  })
+  AlbumsDictionaryDB.deleteMany(albums);
 }  
+
+
+/**
+ * hideAlbumsByUUIDs
+ */
+ public handleHidingAlbumsByUUIDs(albumUUIDs: string[], hide: boolean) {
+  AlbumsDictionaryDB.updateMany({uuid: {$in: albumUUIDs}}, {$set: {isHidden: hide}})
+}
+
 
 /**
  * getAlbums
  */
-public async getAlbums() {
-    return await AlbumsDictionaryDB.find();
+public async getAlbums(showHidden: boolean) {
+  const filter = showHidden ? {} : {isHidden: false};
+  return await AlbumsDictionaryDB.find();
 }
 
    /**
@@ -110,7 +120,7 @@ public async getAlbums() {
   /**
   * handleHiding
   */
-   public handleHiding(albumName: string, entriesIDs: string[], hide: boolean) {
+   public handleHidingPicturesInAlbum(albumName: string, entriesIDs: string[], hide: boolean) {
     const newModelEntry = modelsDictionary(albumName);
     return newModelEntry.updateMany({id: {$in: entriesIDs} }, {$set: {isHidden: hide}})
   }
@@ -130,9 +140,10 @@ public async getAlbums() {
    public addEntry(album: string, entryOBJ: IDBEntry, type: AlbumSchemaType) {
     const newModelEntry = modelsDictionary(album);
     const newEntry = new newModelEntry(entryOBJ);
-    newEntry.save();
+    const res = newEntry.save();
     this.updateCountEntriesInAlbumByName(album);
     entryOBJ.tags?.forEach(tag => this.addTagEntry(tag, type))
+    return res
    }
 
   /**

@@ -34,6 +34,7 @@ import {
   IMongoDBEntry,
   IErrorObject,
   IFilterObj,
+  IDBEntry,
 } from "types";
 import e from "express";
 
@@ -104,7 +105,7 @@ class backendServer {
           type: type as AlbumSchemaType,
           uuid: uuidv4(),
           estimatedPicCount: 0,
-          isHidden: (isHidden == true)
+          isHidden: !!isHidden,
         };
         if (req.file) {
           album_thumbnail_files = req.file as Express.Multer.File;
@@ -127,34 +128,28 @@ class backendServer {
     this.express.post("/add-picture", async (req, res) => {
       const { url, album, type, useSauceNao, isHidden } = req.body; //remember to do .split('\n') and for each to get the stuff bla bla
       
-
       let urlsArray: string[] = url.split("\n").filter( (a:string) => a != "");
-      const forLoopPromise = new Promise(async (resolve, reject) => {
+      let addedPicsArray: IDBEntry[] = [];
+      
+      const forLoopPromise = new Promise<IDBEntry[]>(async (resolve, reject) => {
         urlsArray.forEach(async (value: string, i: number) => {
           const entry = await logic.processInput(value, album);
           if (entry.imagesDataArray?.length) {
-
-            database.addEntry(album, {
+            await database.addEntry(album, {
               ...entry,
               isNSFW: entry.isNSFW ?? false,
               id: uuidv4(),
               album: album,
               date_added: (new Date()).getTime(),
               isHidden: isHidden
-            }, type
-            )
+            }, type)
+            .then(res => addedPicsArray.push(res))
+            .catch(console.log)
           }
-          
-          /*             file: url,
-            thumbnail_file: url,
-            links: {discord: url},
-            has_results: false,
-
- */
-          if (i == urlsArray.length - 1) resolve;
+          if (i == urlsArray.length - 1) resolve(addedPicsArray)
         });
       });
-      await forLoopPromise;
+      res.status(200).json(await forLoopPromise)
       //database.updateCountEntriesInAlbumByName(album)
     });
 
@@ -184,7 +179,7 @@ class backendServer {
 
     this.express.get("/albums", async (req, res) => {
       
-      const albums = await database.getAlbums()
+      const albums = await database.getAlbums(settings.show_hidden)
       return res.status(200).json(albums);
     });
 
@@ -238,20 +233,31 @@ class backendServer {
       database.updateCountEntriesInAlbumByName(album)
     })
 
-    this.express.post("/handle-hide", (req, res) => {
+    this.express.post("/handle-hide-pictures", (req, res) => {
       const { album, entriesIDs, hide } = req.body;
-      database.handleHiding(album, entriesIDs, hide)
+      database.handleHidingPicturesInAlbum(album, entriesIDs, hide)
     })
 
     this.express.post("/autocomplete-tags", (req, res) => {
       const {tagSearch, type} = req.body;
 
       database.getTagsForAutocomplete(tagSearch, type).then(tags => {
-        if (tags) {
-          res.status(200).json({tags: tags});
-        } else res.status(200).json({tags: []})
+        res.status(200).json({tags: tags || []})
       })
     })
+
+    this.express.post("/delete-albums-by-uuids", (req, res) => {
+      const {albumUUIDs} = req.body;
+      database.deleteAlbumsByUUIDS(albumUUIDs)
+      res.status(200);
+    })
+
+    this.express.post("/handle-hiding-albums", (req, res) => {
+      const {albumUUIDs, hide} = req.body;
+      database.handleHidingAlbumsByUUIDs(albumUUIDs, hide)
+      res.status(200);
+    })
+
   }
 }
 export default new backendServer();
