@@ -23,13 +23,13 @@ import type {
   ISettings,
   IFilteredSaucenaoResult,
   ITagsObject,
-  ISaucenaoResult,
-  ISizeCalculationResult,
   IImageProps,
   OutgoingHttpHeaders,
   IPixivResponse,
   IDanbooruResponse,
   IPixivTag,
+  IUrlsArray,
+  ILinePageResponse,
 } from "../types";
 import cheerio from "cheerio";
 import core from "file-type/core";
@@ -131,24 +131,37 @@ public async downloadAndGetFilePaths(resultantData: INewAnimePic, album: string,
     const filePath = await 
     this.downloadFromUrl(element.imageUrl,
         `/saved_pictures/${album}`, 
-        {providedFileName: `${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]} - ${index}`,
+        {providedFileName: `${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]} - ${index} - ${Date.now()}`,
         providedHeaders: providedHeadersObj
       })
 
 
+    let fileThumbnailPath: string;
+    if (element.thumbnailUrl) {
+      fileThumbnailPath = await 
+            this.downloadFromUrl(element.thumbnailUrl,
+              `/saved_pictures_thumbnails/${album}`, 
+              {providedFileName: `thumbnail - ${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]} - ${index} - ${Date.now()}`,
+              providedHeaders: providedHeadersObj
+            })
+    } else {
+      fileThumbnailPath = filePath
+    }
 
-    const fileThumbnailPath = await 
-          this.downloadFromUrl(element.thumbnailUrl,
-            `/saved_pictures_thumbnails/${album}`, 
-            {providedFileName: `thumbnail - ${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]} - ${index}`,
-            providedHeaders: providedHeadersObj
-          })
+    let imageHeight: number = 0;
+    let imagewidth: number = 0;
+
+    if ( !element.height && !element.width) {
+      const imageDimensions = await this.getImageResolution(element.imageUrl)
+      imageHeight = imageDimensions?.imageSize.height ? imageDimensions.imageSize.height : 0;
+      imagewidth = imageDimensions?.imageSize.width ? imageDimensions.imageSize.width : 0;
+    }
         result.push({
           file: filePath,
           thumbnail_file: fileThumbnailPath,
           imageSize: {
-            height: element.height,
-            width: element.width
+            height: element.height || imageHeight,
+            width: element.width || imagewidth
           }
         })
     }
@@ -172,13 +185,43 @@ public async processInput(input: string | File, album: string) {
     resultantData = await this.processUrl(input);
     const res = await this.downloadAndGetFilePaths(resultantData, album)
     if ( res ) resultantData.imagesDataArray = res
+    if (resultantData.thumbnailFile) {
+      resultantData.thumbnailFile = await this.downloadFromUrl(resultantData.thumbnailFile, `/saved_pictures_thumbnails/${album}`,{providedFileName: `thumbnailFile - ${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]}`})
+    } else resultantData.thumbnailFile = resultantData.imagesDataArray[resultantData.indexer].thumbnail_file
   }
   else {
     resultantData = (await this.getImageDataFromRandomUrl(input)) ?? {data: {}, indexer: 0, imagesDataArray: []}
   }
   return resultantData;
 }
-
+/**
+ * processLineStickerPage
+ */
+public async processLineStickerPage(inputUrl: string) {
+  const linePageData = await this.getLineStickerPageData(inputUrl);
+  if (linePageData) {
+    let resultantData: INewAnimePic = {
+    data: {},
+    isNSFW: false,
+    indexer: 0,
+    tags: [],
+    imagesDataArray: []
+  };
+  resultantData.urlsArray = linePageData.urlsArray.map(uE => ({
+    imageUrl: uE,
+    thumbnailUrl: '',
+    width: 0,
+    height: 0,
+  }))
+  resultantData.data.line = linePageData
+  resultantData.links = {line: inputUrl}
+  resultantData.storedResult = 'line'
+  resultantData.artists = [linePageData.authorName]
+  resultantData.ids = {line: Number.parseInt(inputUrl.substring(inputUrl.indexOf('product/') + 8, inputUrl.indexOf('/en')))}
+  resultantData.thumbnailFile = linePageData.previewImageUrl;
+  return resultantData
+  }
+}
 /**
  * processPixivId
  * @param id post id
@@ -221,6 +264,92 @@ public async processPixivId(id: string, arrayIndexer?: number) {
 public booruDictionary = {
   "yande": 'getYandeReImageData' as 'getYandeReImageData',
   "danbooru": 'getdanbooruImageData' as 'getdanbooruImageData',
+}
+
+/**
+ * processLineStickerPage
+ */
+public async getLineStickerPageData(inputUrl: string) {
+  let resultantData: INewAnimePic = {
+    data: {},
+    indexer: 0,
+    tags: [],
+    imagesDataArray: []
+  };
+
+  let headersObj: RequestInit = {
+    credentials: "include",
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.5",
+      "Upgrade-Insecure-Requests": "1",
+      "Sec-Fetch-Dest": "document",
+      "Sec-Fetch-Mode": "navigate",
+      "Sec-Fetch-Site": "none",
+      "Sec-Fetch-User": "?1",
+      "Sec-GPC": "1",
+      "Pragma": "no-cache",
+      "Cache-Control": "no-cache"
+    },
+    method: "GET",
+    mode: "cors",
+  };
+  
+  const response = await this.request(
+    inputUrl,
+    "GET"
+  );
+  const responseText = await response.text()
+  const $ = cheerio.load(responseText);
+  try {
+
+    const packName = $('ul[class="mdCMN38Item01"] div[class="mdCMN38Item0lHead"] p').text();
+    const packCover = $('div[ref="mainImage"] img').attr('src');
+    const packDiscription = $('ul[class="mdCMN38Item01"] p[class="mdCMN38Item01Txt"]').text(); //impiment this please
+    const packAuthorName = $('ul[class="mdCMN38Item01"] a[class="mdCMN38Item01Author"]').text();
+    const packAuthorIDText = $('ul[class="mdCMN38Item01"] a[class="mdCMN38Item01Author"]').attr('href')
+    const packAuthorID = packAuthorIDText?.substring(packAuthorIDText.indexOf('author') + 7, packAuthorIDText.indexOf('/en'));
+    const packImagesObject = $('div[data-widget="StickerPreview"] div[class="mdCMN09ImgListWarp"] ul[class="mdCMN09Ul FnStickerList"]').children()
+    let packImages: string[] = []
+    for (let index = 0; index < packImagesObject.length; index++) {
+      const element = packImagesObject[index];
+      packImages.push(JSON.parse(element.attribs['data-preview']).staticUrl)
+    }
+    
+    let providedDownloadHeaders: IRequestOptions = {providedHeaders: headersObj = {
+      "credentials": "omit",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0",
+        "Accept": "image/avif,image/webp,*/*",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Sec-Fetch-Dest": "image",
+        "Sec-Fetch-Mode": "no-cors",
+        "Sec-Fetch-Site": "cross-site",
+        "Sec-GPC": "1",
+        "Pragma": "no-cache",
+        "Cache-Control": "no-cache"
+        },
+      "referrer": "https://store.line.me/",
+      "method": "GET",
+      "mode": "cors"
+    }}
+    return {
+      previewImageUrl: packCover,
+      postTitle: packName,
+      
+      authorId: packAuthorID || '',
+      authorName: packAuthorName,
+      urlsArray: packImages,
+      requestOptions: providedDownloadHeaders,
+    } as ILinePageResponse
+  } catch (error) {
+    console.log("error parsing LINE.me sticker page link : ", inputUrl);
+    console.log('error : ', error)
+    
+  }
+
+
 }
 
 /**
@@ -363,17 +492,37 @@ public  checkPixivImageUrlValid(inputUrl: string) {
           }
 
           break;
+        case "store.line.me": //probably need checks here considering different types of line posts
+          return (await this.processLineStickerPage(inputUrl)) || {
+            ...resultantData,
+            foundUrl: inputUrl,
+            urlsArray: [{
+              imageUrl: inputUrl,
+              thumbnailUrl: inputUrl,
+              height: 0,
+              width: 0
+            }],
+            links: {other: [inputUrl]}
+          } as INewAnimePic;
+          break;
         default:
           if (inputUrl.match(/[\?]*.(jpg|jpeg|gif|png|tiff|bmp)(\?(.*))?$/))
           if ((await this.checkImageUrlValid(inputUrl)) == "OK") 
           {
             if (settings.saucenao_api_key) {
               const sauceParseRes = await this.getImageDataFromRandomUrl(inputUrl)
+              const imageDimensions = await this.getImageResolution(inputUrl);
               
               if (sauceParseRes) resultantData = sauceParseRes;
               else resultantData = {
                 ...resultantData,
                 foundUrl: inputUrl,
+                urlsArray: [{
+                  imageUrl: inputUrl,
+                  thumbnailUrl: inputUrl,
+                  height: imageDimensions?.imageSize?.height || 0,
+                  width: imageDimensions?.imageSize?.width || 0
+                }],
                 links: {other: [inputUrl]}
               } as INewAnimePic;
             }
@@ -392,7 +541,8 @@ public  checkPixivImageUrlValid(inputUrl: string) {
 
     if (this.sauceNao) {
       const { resultArray } = await this.sauceNao.getSauce(url);
-      
+      if (resultArray) {
+        
       
       let filteredResults: IFilteredSaucenaoResult = {};
 
@@ -400,6 +550,7 @@ public  checkPixivImageUrlValid(inputUrl: string) {
 
       let originalPostResult: IFilteredSaucenaoResult = {};
       let originalPostAlternative: IFilteredSaucenaoResult = {};
+
 
       for (let index = 0; index < resultArray.length; index++) {
         const item = resultArray[index]  
@@ -477,6 +628,7 @@ public  checkPixivImageUrlValid(inputUrl: string) {
         return filteredResults.animePic
       }
     }
+  }
 }
 
 

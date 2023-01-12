@@ -173,20 +173,20 @@ export interface INewAnimePic {
     
     
     artists?: string[];
-    storedResult?: "danbooru" | "pixiv" | 'yande';
+    storedResult?: "danbooru" | "pixiv" | 'yande' | 'line';
     links?: IPostLinks;
     ids?: IPostIds;
     //parsed from results
     isNSFW?: boolean;
     has_results?: boolean;
     
-    
+    thumbnailFile?: string;
     
     tags?: string[];
     date_added?: number;
     date_created?: number;
     //doesnt exist in end result
-    urlsArray?: urlsArray[];
+    urlsArray?: IUrlsArray[];
     requestOptions?: IRequestOptions;
     imageSize?: ISizeCalculationResult;
 
@@ -195,10 +195,11 @@ export interface INewAnimePic {
         danbooru?: IDanbooruResponse;
         yande?:IDanbooruResponse;
         pixiv?: IPixivResponse;
+        line?: ILinePageResponse;
     }
 }
 
-interface urlsArray {
+export interface IUrlsArray {
     imageUrl: string;
     thumbnailUrl: string;
     width: number;
@@ -214,6 +215,7 @@ export interface IPostIds {
     danbooru?: number;
     yande?: number;
     pixiv?: number;
+    line?: number;
 }
 
 export interface IPostLinks {
@@ -221,6 +223,7 @@ export interface IPostLinks {
     danbooru?: string;
     yande?:string;
     twitter?: string;
+    line?: string;
     other?: string[];
 }
 
@@ -299,6 +302,15 @@ export interface IDanbooruResponse {
     tags?: IDanbooruTags;
     requestOptions?: IRequestOptions
 
+}
+
+export interface ILinePageResponse {
+    previewImageUrl: string;
+    postTitle: string;
+    authorId: string;
+    authorName: string;
+    urlsArray: string[];
+    requestOptions?: IRequestOptions
 }
 
 export interface IYandeTags extends IDanbooruTags {}

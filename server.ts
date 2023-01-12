@@ -149,7 +149,9 @@ class backendServer {
           if (i == urlsArray.length - 1) resolve(addedPicsArray)
         });
       });
-      res.status(200).json(await forLoopPromise)
+      const resPromise = await forLoopPromise;
+      database.updateCountEntriesInAlbumByName(album)
+      res.status(200).json(resPromise)
       //database.updateCountEntriesInAlbumByName(album)
     });
 
