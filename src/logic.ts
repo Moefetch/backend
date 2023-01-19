@@ -183,11 +183,14 @@ public async processInput(input: string | File, album: string) {
   let providedHeadersObj: RequestInit | undefined = undefined
   if (typeof input == "string"){
     resultantData = await this.processUrl(input);
-    const res = await this.downloadAndGetFilePaths(resultantData, album)
-    if ( res ) resultantData.imagesDataArray = res
-    if (resultantData.thumbnailFile) {
-      resultantData.thumbnailFile = await this.downloadFromUrl(resultantData.thumbnailFile, `/saved_pictures_thumbnails/${album}`,{providedFileName: `thumbnailFile - ${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]}`})
-    } else resultantData.thumbnailFile = resultantData.imagesDataArray[resultantData.indexer].thumbnail_file
+    console.log(resultantData);
+    if (resultantData.imagesDataArray.length) {
+      const res = await this.downloadAndGetFilePaths(resultantData, album)
+      if ( res ) resultantData.imagesDataArray = res
+      if (resultantData.thumbnailFile) {
+        resultantData.thumbnailFile = await this.downloadFromUrl(resultantData.thumbnailFile, `/saved_pictures_thumbnails/${album}`,{providedFileName: `thumbnailFile - ${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]}`})
+      } else resultantData.thumbnailFile = resultantData.imagesDataArray[resultantData.indexer].thumbnail_file
+    }
   }
   else {
     resultantData = (await this.getImageDataFromRandomUrl(input)) ?? {data: {}, indexer: 0, imagesDataArray: []}
@@ -853,6 +856,9 @@ public  checkPixivImageUrlValid(inputUrl: string) {
       
       }}
       
+      if (!json.urls.original) {
+        throw new Error("pixiv post is marked as sensitive and therefore cant get data for because of recent api changes, please wait for fix"); 
+      }
       
       return {
         originalImageUrl: json.urls.original,
