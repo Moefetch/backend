@@ -189,6 +189,8 @@ class backendServer {
       const {
         database_url,
         use_mongodb,
+        use_pixiv_cookie,
+        pixiv_cookie,
         search_diff_sites,
         saucenao_api_key,
         pixiv_download_first_image_only,
@@ -197,16 +199,21 @@ class backendServer {
         show_hidden,
       } = req.body;
 
-      settings.search_diff_sites = search_diff_sites;
       settings.show_nsfw = show_nsfw;
       settings.blur_nsfw = blur_nsfw;
       settings.show_hidden = show_hidden;
 
       settings.pixiv_download_first_image_only =
         pixiv_download_first_image_only;
+
+      if (use_pixiv_cookie && !!pixiv_cookie) {
+        settings.use_pixiv_cookie = use_pixiv_cookie;
+        settings.pixiv_cookie = pixiv_cookie;
+      }
       if (search_diff_sites) {
         let apiKeyCheck = await Logic.checkSauceNaoApi(saucenao_api_key);
         if (apiKeyCheck) {
+          settings.search_diff_sites = search_diff_sites;
           settings.saucenao_api_key = saucenao_api_key;
           errorsObject.saucenaoApiKeyError = "";
         } else
