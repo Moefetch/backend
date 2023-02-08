@@ -14,6 +14,9 @@ export interface ISetting {
     show_nsfw: boolean,
     blur_nsfw: boolean,
     show_hidden: boolean,
+    use_pixiv_cookie: boolean,
+    pixiv_cookie: string,
+
 }
 
 /**
@@ -34,6 +37,8 @@ class Settings implements ISetting {
     public show_nsfw: boolean;
     public blur_nsfw: boolean;
     public show_hidden: boolean;
+    public use_pixiv_cookie: boolean;
+    public pixiv_cookie: string;
 
 
     constructor(){
@@ -46,6 +51,8 @@ class Settings implements ISetting {
             initialSetup,
             use_mongodb,
             search_diff_sites, 
+            use_pixiv_cookie,
+            pixiv_cookie,
             pixiv_download_first_image_only, 
             show_nsfw,
             blur_nsfw,
@@ -61,7 +68,9 @@ class Settings implements ISetting {
         this.downloadFolder = downloadFolder ?? '../files'
         this.hostname = hostname ?? "http://127.0.0.1:2234";
         this.saucenao_api_key = saucenao_api_key ?? "";
+        this.pixiv_cookie = pixiv_cookie ?? "";
         this.search_diff_sites = search_diff_sites ?? false;
+        this.use_pixiv_cookie = use_pixiv_cookie ?? false;
         this.pixiv_download_first_image_only = pixiv_download_first_image_only ?? false;
         this.show_nsfw = show_nsfw ?? true;
         this.blur_nsfw = blur_nsfw ?? true;

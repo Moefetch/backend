@@ -41,9 +41,13 @@ import { stringify } from "querystring";
 export default class logic {
   public sauceNao?: SauceNao;
   public settings: ISettings;
+  public pixivCookie: string;
   constructor(settings: ISettings) {
     this.settings = settings;
+    this.pixivCookie = '';
     if (settings.saucenao_api_key) this.sauceNao = new SauceNao(settings.saucenao_api_key);
+    if (settings.pixiv_cookie) this.pixivCookie = settings.pixiv_cookie;
+    else this.getPixivCookies('https://www.pixiv.net/en/').then(cookie => this.pixivCookie = cookie)
   }
 
   public async compareImgSizes(img1: string, img2: string) {
@@ -183,8 +187,7 @@ public async processInput(input: string | File, album: string) {
   let providedHeadersObj: RequestInit | undefined = undefined
   if (typeof input == "string"){
     resultantData = await this.processUrl(input);
-    console.log(resultantData);
-    if (resultantData.imagesDataArray.length) {
+    if (resultantData.urlsArray?.length) {
       const res = await this.downloadAndGetFilePaths(resultantData, album)
       if ( res ) resultantData.imagesDataArray = res
       if (resultantData.thumbnailFile) {
@@ -283,7 +286,7 @@ public async getLineStickerPageData(inputUrl: string) {
   let headersObj: RequestInit = {
     credentials: "include",
     headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
       "Accept-Language": "en-US,en;q=0.5",
       "Upgrade-Insecure-Requests": "1",
@@ -323,7 +326,7 @@ public async getLineStickerPageData(inputUrl: string) {
     let providedDownloadHeaders: IRequestOptions = {providedHeaders: headersObj = {
       "credentials": "omit",
       "headers": {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:108.0) Gecko/20100101 Firefox/108.0",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
         "Accept": "image/avif,image/webp,*/*",
         "Accept-Language": "en-US,en;q=0.5",
         "Sec-Fetch-Dest": "image",
@@ -408,7 +411,7 @@ public  checkPixivImageUrlValid(inputUrl: string) {
         "credentials" : "omit",
         "headers" :
         {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:104.0) Gecko/20100101 Firefox/104.0",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
           "Accept": "image/avif,image/webp,*/*",
           "Accept-Language": "en-US,en;q=0.5",
           "Sec-Fetch-Dest": "image",
@@ -680,7 +683,7 @@ public  checkPixivImageUrlValid(inputUrl: string) {
       credentials: "omit",
       headers: {
         "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0",
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
         Accept: "image/avif,image/webp,*/*",
         "Accept-Language": "en-US,en;q=0.5",
         "Sec-Fetch-Dest": "image",
@@ -766,12 +769,12 @@ public  checkPixivImageUrlValid(inputUrl: string) {
 
   public async getPixivImageData(id: number | string, arrayIndexer?: number) {
 
-    const cookies = (await this.getPixivCookies(`https://www.pixiv.net/en/artworks/${id}`))
+    const cookies = this.pixivCookie;
     
     let headersObj: RequestInit = {
       credentials: "include",
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
         "Accept": "application/json",
         "Accept-Language": "en-US,en;q=0.5",
         "Sec-Fetch-Dest": "empty",
@@ -787,10 +790,11 @@ public  checkPixivImageUrlValid(inputUrl: string) {
       method: "GET",
       mode: "cors",
     };
-    let providedDownloadHeaders: IRequestOptions = {providedHeaders: headersObj = {
+    let providedDownloadHeaders: IRequestOptions = {
+      providedHeaders: headersObj = {
       "credentials": "omit",
       "headers": {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
           "Accept": "image/avif,image/webp,*/*",
           "Accept-Language": "en-US,en;q=0.5",
           "Sec-Fetch-Dest": "image",
@@ -799,6 +803,7 @@ public  checkPixivImageUrlValid(inputUrl: string) {
           "Sec-GPC": "1",
           "Pragma": "no-cache",
           "Cache-Control": "no-cache",
+          cookie: cookies,
           "referer" : "https://www.pixiv.net/"
         },
       "referrer": "https://www.pixiv.net/",
@@ -839,7 +844,7 @@ public  checkPixivImageUrlValid(inputUrl: string) {
         "credentials" : "omit",
         "headers" :
         {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:104.0) Gecko/20100101 Firefox/104.0",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
           "Accept": "image/avif,image/webp,*/*",
           "Accept-Language": "en-US,en;q=0.5",
           "Sec-Fetch-Dest": "image",
@@ -857,7 +862,7 @@ public  checkPixivImageUrlValid(inputUrl: string) {
       }}
       
       if (!json.urls.original) {
-        throw new Error("pixiv post is marked as sensitive and therefore cant get data for because of recent api changes, please wait for fix"); 
+        throw new Error("pixiv post is marked as sensitive and you havent suppled a pixiv cookie"); 
       }
       
       return {
@@ -906,7 +911,7 @@ public  checkPixivImageUrlValid(inputUrl: string) {
     let headersObj: RequestInit = options?.providedHeaders ?? {
       credentials: "omit",
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
         "Upgrade-Insecure-Requests": "1",
