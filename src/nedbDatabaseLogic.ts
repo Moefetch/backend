@@ -15,14 +15,6 @@ const baseDBURL = `${settings.downloadFolder}/database`;
 const AlbumsDictionaryDB = new nedb<IAlbumDictionaryItem>(`${baseDBURL}/AlbumsDictionary/AlbumsDictionary.db`)
 AlbumsDictionaryDB.loadDatabase()
 
-const AnimePicTagsDB = new nedb<ITagEntry>(`${baseDBURL}/Tags/AnimePicsTags.db`);
-AnimePicTagsDB.loadDatabase()
-
-const tagsDBDictionary = {
-  "Anime Pic": AnimePicTagsDB
-}
-
-
 let stroredAlbumDBs: any = {
 
 };
@@ -242,7 +234,7 @@ const filter = showHidden ? {} : {isHidden: false};
    * addTagEntry
    */
   public addTagEntry(tag: string, type: AlbumSchemaType, tagToUpdateTo?: string) {
-    const AnimePicTagsDB = tagsDBDictionary[type];
+    const AnimePicTagsDB = this.tagsDBDictionary[type];
     AnimePicTagsDB.update({_id: tag.toLocaleLowerCase()}, {_id: tagToUpdateTo?.toLocaleLowerCase() ?? tag}, {upsert: true})
   }
 
@@ -250,7 +242,7 @@ const filter = showHidden ? {} : {isHidden: false};
   * getTagsForAutocomplete
   */
  public getTagsForAutocomplete(search: string, type: AlbumSchemaType) {
-  const AnimePicTagsDB = tagsDBDictionary[type];
+  const AnimePicTagsDB = this.tagsDBDictionary[type];
   const searchRegex = RegExp(search);
   return new Promise<string[] | Error>((resolve, reject) => {
     AnimePicTagsDB.find({_id: {$regex: searchRegex}}).exec((err, docs) => {
@@ -258,9 +250,14 @@ const filter = showHidden ? {} : {isHidden: false};
     })
   })
  }
-
-  constructor(){
-      
+  public tagsDBDictionary: {[x:string]: nedb<ITagEntry>}
+  constructor(logicCategories: string[]){
+    this.tagsDBDictionary = this.loadTagDictionary(logicCategories)
   }
-
+  private loadTagDictionary(logicCategories: string[]) {
+    return Object.fromEntries(logicCategories.map(category => {
+      const categoryTagDB = new nedb<ITagEntry>(`${baseDBURL}/Tags/${category.replace(' ',"-").toLowerCase()}.db`);
+      return [category, categoryTagDB]
+    }))
+  }
 }

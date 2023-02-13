@@ -84,15 +84,6 @@ export interface IFilterObj {
     showNSFW?: boolean;
 }
 
-export interface INewPic {
-    file?: string;
-    url?: string;
-    old_file?: string;
-    thumbnail_file?: string;
-    has_results?: boolean;
-    type?: AlbumSchemaType;
-}
-
 export interface ITagsObject {
     pixiv?: IPixivTag[];
     danbooru?: IDanbooruTags;
@@ -159,7 +150,63 @@ export interface IMongoDBEntry extends mongoose.Document {
     date_created?: number;
     //imageSize?: ISizeCalculationResult;
 }
+export interface ILogicModel {
+    supportedHostName:string;
+    //modelUtility: any; //cus i cannt put in a constructor type for each unique util
+    process: (inputUrl: string) => Promise<INewPicture>
+}
 
+export interface IModelDictionary {
+    [key:string]: ILogicModel['process'];
+}
+
+export interface ICategoryDictionary {
+    [key:string]: ILogicCategory['ProcessInput']
+}
+
+export interface ILogicModelConstructor {
+    default: {new (settings: ISettings):ILogicModel}
+}
+
+export interface ILogicCategory {
+    logicCategory: string;
+    processDictionary: IModelDictionary;
+    ProcessInput: (input: string | File, album: string) => Promise<INewPicture | undefined>
+
+}
+
+export interface INewPicture {
+    //for mongo compatablity 
+    id?: string;
+    indexer: number;
+
+    imagesDataArray: IImageDataArray[];
+    
+    
+    album?: string;
+    
+    
+    artists?: string[];
+    storedResult?: string;
+    links?: any;
+    ids?: any;
+    //parsed from results
+    isNSFW?: boolean;
+    has_results?: boolean;
+    
+    thumbnailFile?: string;
+    
+    tags?: string[];
+    date_added?: number;
+    date_created?: number;
+    //doesnt exist in end result
+    urlsArray?: IUrlsArray[];
+    requestOptions?: IRequestOptions;
+    imageSize?: ISizeCalculationResult;
+
+    //resulting data from parsing the sites
+    data: any
+}
 
 export interface INewAnimePic {
     //for mongo compatablity 

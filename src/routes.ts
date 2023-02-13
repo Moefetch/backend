@@ -1,17 +1,17 @@
 import { v4 as uuidv4 } from "uuid";
-import express, { Express } from "express";
+import express from "express";
 import { AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj } from "types";
 import fs from "fs";
 import MongoDatabaseLogic from "./mongoDatabaseLogic";
-import Logic from "./logic"
+import {Logic} from "./Logic/Logic"
 import NeDBDatabaseLogic from "./nedbDatabaseLogic";
-import settings from "settings";
+import settings from "../settings";
 import { upload } from "../middlewares/upload";
-
 let logic = new Logic(settings);
 
-const database = settings.database_url ? (new MongoDatabaseLogic(settings.database_url)) : (new NeDBDatabaseLogic()) ;
-
+const database = settings.database_url ? (new MongoDatabaseLogic(settings.database_url, logic.supportedTypes)) : (new NeDBDatabaseLogic(logic.supportedTypes)) ;
+database.updateCountEntriesInAllAlbums()
+ 
 const router = express.Router();
 
 function saveSettings() {
@@ -19,8 +19,6 @@ function saveSettings() {
   console.log('New settings: ', settings);
   logic = new Logic(settings);
 }
-  
-const typesOfModels = ["Anime Pic"];
 
 const errorsObject: IErrorObject = {
   backendUrlError: "",
@@ -73,8 +71,8 @@ router.post(
     
     const forLoopPromise = new Promise<IDBEntry[]>(async (resolve, reject) => {
       urlsArray.forEach(async (value: string, i: number) => {
-        const entry = await logic.processInput(value, album);
-        if (entry.imagesDataArray?.length) {
+        const entry = await logic.ProcessInput(value, type, album);
+        if (entry && entry.imagesDataArray?.length) {
           await database.addEntry(album, {
             ...entry,
             isNSFW: entry.isNSFW ?? false,
@@ -166,7 +164,7 @@ router.post(
   });
 
   router.get("/types-of-models", async (req, res) => {
-    return res.status(200).json(typesOfModels);
+    return res.status(200).json(logic.supportedTypes);
   });
 
   router.delete('/delete-entry-by-id', async (req, res) => {
@@ -199,3 +197,6 @@ router.post(
     database.handleHidingAlbumsByUUIDs(albumUUIDs, hide)
     res.status(200);
   })
+
+
+  export default router;
