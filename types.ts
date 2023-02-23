@@ -84,15 +84,6 @@ export interface IFilterObj {
     showNSFW?: boolean;
 }
 
-export interface INewPic {
-    file?: string;
-    url?: string;
-    old_file?: string;
-    thumbnail_file?: string;
-    has_results?: boolean;
-    type?: AlbumSchemaType;
-}
-
 export interface ITagsObject {
     pixiv?: IPixivTag[];
     danbooru?: IDanbooruTags;
@@ -159,7 +150,118 @@ export interface IMongoDBEntry extends mongoose.Document {
     date_created?: number;
     //imageSize?: ISizeCalculationResult;
 }
+/* 
+export interface IModelSpecialParam {
+    name: string; //name of setting . variable
+    value: boolean | string; // default value or something 
+    supportedHostName:string; 
+    description: string; 
+}
+ */
+export interface IParam {
+    containsString: boolean;
+    checkBoxValue: boolean;
+    checkBoxDescription: string;
+  errorMessage?: string;
+    stringValue?: {
+        value: string,
+        stringPlaceholder: string,
+    }
+};
 
+export interface IParamValidityCheck {
+    indexer: string[];
+    checkValid: (
+        enabledBool: boolean,
+        stringValue?: string
+      ) => string | Promise<string | undefined> | undefined;
+}
+
+export interface IModelSpecialParam {
+    [name:string]: IParam
+}
+
+export interface ILogicModel {
+    supportedHostName:string;
+    //modelUtility: any; //cus i cannt put in a constructor type for each unique util
+    process: (inputUrl: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary) => Promise<INewPicture>;
+    specialNewEntryParam?:IModelSpecialParam;
+    specialSettingsParam?:IModelSpecialParam;
+    specialSettingValidityCheckArray?: IParamValidityCheck[];
+}
+
+export interface IModelDictionary {
+    [key:string]: ILogicModel['process'];
+}
+export interface ILogicSpecialSettingsDictionary {
+    [logicCategory: string]: ILogicCategorySpecialSettingsDictionary
+}
+export interface ILogicSpecialParamsDictionary {
+    [logicCategory: string]: ILogicCategorySpecialParamsDictionary
+}
+
+export interface ICategoryDictionary {
+    [key:string]: ILogicCategory['ProcessInput']
+}
+
+export interface ILogicModelConstructor {
+    default: {new (settings: ISettings):ILogicModel}
+}
+export interface ILogicCategorySpecialParamsDictionary {
+    specialCategoryParams?: IModelSpecialParam;
+    specialHostnameSpecificParams?: {
+        [hostname: string]: IModelSpecialParam;
+    }
+}
+export interface ILogicCategorySpecialSettingsDictionary {
+    specialCategorySettings?: IModelSpecialParam;
+    specialHostnameSpecificSettings?: {
+        [hostname: string]: IModelSpecialParam;
+    }
+}
+
+export interface ILogicCategory {
+    logicCategory: string;
+    processDictionary: IModelDictionary;
+    specialParamsDictionary?: ILogicCategorySpecialParamsDictionary;
+    specialSettingsDictionary?: ILogicCategorySpecialSettingsDictionary;
+    specialSettingValidityCheck?: IParamValidityCheck[];
+    ProcessInput: (input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary) => Promise<INewPicture | undefined>
+
+}
+
+export interface INewPicture {
+    //for mongo compatablity 
+    id?: string;
+    indexer: number;
+
+    imagesDataArray: IImageDataArray[];
+    
+    
+    album?: string;
+    
+    
+    artists?: string[];
+    storedResult?: string;
+    links?: any;
+    ids?: any;
+    //parsed from results
+    isNSFW?: boolean;
+    has_results?: boolean;
+    
+    thumbnailFile?: string;
+    
+    tags?: string[];
+    date_added?: number;
+    date_created?: number;
+    //doesnt exist in end result
+    urlsArray?: IUrlsArray[];
+    requestOptions?: IRequestOptions;
+    imageSize?: ISizeCalculationResult;
+
+    //resulting data from parsing the sites
+    data: any
+}
 
 export interface INewAnimePic {
     //for mongo compatablity 
@@ -254,12 +356,16 @@ export interface IImageProps {
 }
 
 export interface IErrorObject {
-    backendUrlError: string;  
-    databaseUrlError: string; 
-    saucenaoApiKeyError: string
+    hasError: boolean;  
+    responseSettings: IResponseSettings;
 }
 
-
+export interface IResponseSettings {
+    database_url: IParam;
+    stock_settings: ISettings['stock_settings'];
+    special_settings: ISettings['special_settings'];
+    special_params: ISettings['special_params'];
+}
 
 export interface IPixivResponse {
     originalImageUrl: string;

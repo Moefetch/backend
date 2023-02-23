@@ -1,7 +1,7 @@
 import fs from "fs";
 import stream from "stream";
 
-import { ISaucenaoResult, ISaucenaoResultObj } from "types";
+import { IParamValidityCheck, IModelSpecialParam, ISaucenaoResult, ISaucenaoResultObj } from "types";
 
 import FormData from "form-data";
 import fileType from "file-type";
@@ -11,6 +11,40 @@ import fileType from "file-type";
  * @param api_key api_key you get from https://saucenao.com/user.php?page=search-api
  */
 export class sauceNao {
+
+  static specialSettingsParam:IModelSpecialParam = {
+    "saucenao_api_key" : {
+      containsString: true,
+      checkBoxValue: false,
+      checkBoxDescription: "Use SauceNao to search different sites for possibly higher quality ",
+      stringValue: {
+        value: "",
+        stringPlaceholder: "Saucenao API key (for the option above)"
+      }
+    }
+  }
+  static specialSettingsParamValidityCheck:IParamValidityCheck[] = [
+    {
+    indexer: ["special_settings", "Anime Picture", "specialCategorySettings", "saucenao_api_key"],
+    checkValid: async (
+      enabledBool: boolean,
+      stringValue?: string
+    ) => {
+      if (enabledBool) {
+        if (stringValue) {
+          let apiKeyCheck = await checkSauceNAOApi(stringValue);
+          if (apiKeyCheck) {
+            return undefined;
+          } else
+          return "SauceNao api key invalid or expired";
+        } else {
+          return "No saucenao api key was provided";
+        }
+      }
+    }
+  }
+]
+  
   public api_key: string | undefined;
 
   /**
@@ -83,6 +117,16 @@ export class sauceNao {
   constructor(api_key: string) {
     this.api_key = api_key;
   }
+
+  
+}
+
+export async function checkSauceNAOApi(sauceNaoApi: string) {
+  const testUrl = "https://i.imgur.com/6qNnzQg.jpeg";
+  const sauceNaoTest = new sauceNao(sauceNaoApi);
+  const response = await sauceNaoTest.getSauce(testUrl);
+  return response.resultArray ? true : false;
 }
 
 export default sauceNao;
+

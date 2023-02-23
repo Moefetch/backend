@@ -1,22 +1,23 @@
 import fs from "fs";
+import { IParam, ILogicSpecialSettingsDictionary, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary } from "types";
+
+type IStockSettings = {
+    blur_nsfw: IParam;
+    show_hidden: IParam;
+    show_nsfw: IParam;
+};
+
 
 export interface ISetting {
     port: number;
     ip: string;
-    use_mongodb: boolean;
     downloadFolder: string;
     initialSetup: boolean;
     hostname: string;
-    database_url: string;
-    saucenao_api_key: string;
-    search_diff_sites: boolean;
-    pixiv_download_first_image_only: boolean;
-    show_nsfw: boolean,
-    blur_nsfw: boolean,
-    show_hidden: boolean,
-    use_pixiv_cookie: boolean,
-    pixiv_cookie: string,
-
+    database_url: IParam;
+    stock_settings: IStockSettings;
+    special_settings: ILogicSpecialSettingsDictionary;
+    special_params: ILogicSpecialParamsDictionary;
 }
 
 /**
@@ -28,18 +29,11 @@ class Settings implements ISetting {
     public ip: string;
     public downloadFolder: string;
     public initialSetup: boolean;
-    public use_mongodb: boolean;
     public hostname: string ;
-    public database_url: string;
-    public saucenao_api_key: string;
-    public search_diff_sites: boolean;
-    public pixiv_download_first_image_only: boolean;
-    public show_nsfw: boolean;
-    public blur_nsfw: boolean;
-    public show_hidden: boolean;
-    public use_pixiv_cookie: boolean;
-    public pixiv_cookie: string;
-
+    public database_url: IParam;
+    public stock_settings: IStockSettings;
+    public special_settings: ILogicSpecialSettingsDictionary;
+    public special_params: ILogicSpecialParamsDictionary;
 
     constructor(){
         !fs.existsSync("./settings.json") && this.save()
@@ -47,35 +41,47 @@ class Settings implements ISetting {
             ip, 
             hostname, 
             database_url, 
-            saucenao_api_key, 
             initialSetup,
-            use_mongodb,
-            search_diff_sites, 
-            use_pixiv_cookie,
-            pixiv_cookie,
-            pixiv_download_first_image_only, 
-            show_nsfw,
-            blur_nsfw,
-            show_hidden,
-            downloadFolder } = JSON.parse(
+            downloadFolder,
+            stock_settings,
+            special_settings,
+            special_params } = JSON.parse(
             fs.readFileSync("./settings.json", { encoding: "utf-8" })
         ) as ISetting;
         this.ip = !!ip ? ip : "";
         this.initialSetup = initialSetup ?? false;
-        this.use_mongodb = use_mongodb ?? false;
         this.port = port ?? 2234;
-        this.database_url = database_url ?? "";
+        this.database_url = database_url ?? {
+          containsString: true,
+            checkBoxValue: false,
+            checkBoxDescription: "Use a mongoDB database",
+            stringValue: {
+              stringPlaceholder:
+                "Database URL, use the form mongodb://username:password@host:port/moefetch",
+              value: "",
+            }
+          },
         this.downloadFolder = downloadFolder ?? '../files'
         this.hostname = hostname ?? "http://127.0.0.1:2234";
-        this.saucenao_api_key = saucenao_api_key ?? "";
-        this.pixiv_cookie = pixiv_cookie ?? "";
-        this.search_diff_sites = search_diff_sites ?? false;
-        this.use_pixiv_cookie = use_pixiv_cookie ?? false;
-        this.pixiv_download_first_image_only = pixiv_download_first_image_only ?? false;
-        this.show_nsfw = show_nsfw ?? true;
-        this.blur_nsfw = blur_nsfw ?? true;
-        this.show_hidden = show_hidden ?? false;
-
+        this.special_settings = special_settings ?? {};
+        this.special_params = special_params ?? {};
+        this.stock_settings = stock_settings ?? {
+            blur_nsfw: {
+              containsString: false,
+              checkBoxValue: true,
+              checkBoxDescription: "Blur NSFW tagged posts",
+            },
+            show_hidden: {
+              containsString: false,
+              checkBoxValue: true,
+              checkBoxDescription: "Show hidden posts and albums",
+            },
+            show_nsfw: {
+              containsString: false,
+              checkBoxValue: true,
+              checkBoxDescription: "Show NSFW tagged posts",
+            },
+          }
 
         this.save();
         
@@ -92,3 +98,13 @@ class Settings implements ISetting {
 }
 
 export default new Settings();
+/* 
+export function checkMongoDbURLValid (enabledBool: boolean, stringValue?: string) {
+  if (enabledBool && !stringValue) return "No Database url was provided";
+
+  const HOSTS_REGEX =
+    /(?<protocol>mongodb(?:\+srv|)):\/\/(?:(?<username>[^:]*)(?::(?<password>[^@]*))?@)?(?<hosts>(?!:)[^\/?@]+)(?<rest>.*)/;
+
+  if (enabledBool && stringValue && !HOSTS_REGEX.test(stringValue))
+    return "Database url invalid";
+} */

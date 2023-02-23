@@ -1,17 +1,59 @@
 import { v4 as uuidv4 } from "uuid";
-import express, { Express } from "express";
-import { AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj } from "types";
+import express from "express";
+import { AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IParam } from "types";
 import fs from "fs";
 import MongoDatabaseLogic from "./mongoDatabaseLogic";
-import Logic from "./logic"
+import {Logic} from "./Logic/Logic"
 import NeDBDatabaseLogic from "./nedbDatabaseLogic";
-import settings from "settings";
+import settings from "../settings";
 import { upload } from "../middlewares/upload";
-
+import { isDeepStrictEqual } from "util";
 let logic = new Logic(settings);
 
-const database = settings.database_url ? (new MongoDatabaseLogic(settings.database_url)) : (new NeDBDatabaseLogic()) ;
+function compareSpecialSettingsToDefault(initialSettings: typeof settings, divisionType: "special_settings" | "special_params", 
+defaultSpecialSettingsOrParams: {[key: string]: any}
+) { //the flow is get settings from default and if they dont exuist in settings object add (the else part is adding)
 
+  let internalSettingVar = (JSON.parse(JSON.stringify({...initialSettings})));
+  if (!internalSettingVar[divisionType] || internalSettingVar[divisionType] == {}) {
+    internalSettingVar[divisionType] = defaultSpecialSettingsOrParams;
+    return internalSettingVar
+  }
+  for (const categoryName in defaultSpecialSettingsOrParams) {
+    if (Object.prototype.hasOwnProperty.call(defaultSpecialSettingsOrParams, categoryName) && Object.prototype.hasOwnProperty.call(internalSettingVar[divisionType], categoryName) ) {
+      const categoryInDefault = defaultSpecialSettingsOrParams[categoryName];
+      for (const hostOrCategorySpecific in categoryInDefault) {
+        if (Object.prototype.hasOwnProperty.call(categoryInDefault, hostOrCategorySpecific)  && Object.prototype.hasOwnProperty.call(internalSettingVar[divisionType][categoryName], hostOrCategorySpecific) ) {
+          if ((internalSettingVar[divisionType][categoryName] as any)[hostOrCategorySpecific]) {
+            for (const setting in categoryInDefault[hostOrCategorySpecific]) {
+              if (Object.prototype.hasOwnProperty.call(categoryInDefault[hostOrCategorySpecific], setting)) {
+                const settingObj = categoryInDefault[hostOrCategorySpecific][setting];
+                (internalSettingVar[divisionType][categoryName] as any)[hostOrCategorySpecific][setting] 
+                = ((internalSettingVar[divisionType][categoryName] as any)[hostOrCategorySpecific] as any)[setting] 
+                ?? settingObj
+              }
+            }
+          }
+        } else (internalSettingVar[divisionType][categoryName] as any)[hostOrCategorySpecific] = defaultSpecialSettingsOrParams[categoryName][hostOrCategorySpecific]
+      }
+    } else internalSettingVar[divisionType][categoryName] = defaultSpecialSettingsOrParams[categoryName]
+
+  }
+  if (!isDeepStrictEqual(initialSettings[divisionType], internalSettingVar[divisionType])) {
+    if(divisionType == "special_params") settings[divisionType] = (internalSettingVar[divisionType] as ILogicSpecialParamsDictionary)
+    else settings[divisionType] = (internalSettingVar[divisionType] as ILogicSpecialSettingsDictionary)
+    
+    saveSettings();
+  }
+  return internalSettingVar as typeof initialSettings
+}
+
+compareSpecialSettingsToDefault(settings, "special_params", logic.specialParamsDictionary ?? {})
+compareSpecialSettingsToDefault(settings, "special_settings", logic.specialSettingsDictionary ?? {});
+
+const database = settings.database_url.stringValue?.value ? (new MongoDatabaseLogic(settings.database_url.stringValue.value, logic.supportedTypes)) : (new NeDBDatabaseLogic(logic.supportedTypes)) ;
+database.updateCountEntriesInAllAlbums()
+ 
 const router = express.Router();
 
 function saveSettings() {
@@ -19,14 +61,6 @@ function saveSettings() {
   console.log('New settings: ', settings);
   logic = new Logic(settings);
 }
-  
-const typesOfModels = ["Anime Pic"];
-
-const errorsObject: IErrorObject = {
-  backendUrlError: "",
-  databaseUrlError: "",
-  saucenaoApiKeyError: "",
-}  
 
 router.use((req, res, next) => {
     console.log('Time: ', Date.now())
@@ -66,15 +100,15 @@ router.post(
   });
 
   router.post("/add-picture", async (req, res) => {
-    const { url, album, type, useSauceNao, isHidden } = req.body; //remember to do .split('\n') and for each to get the stuff bla bla
+    const { url, album, type, isHidden, optionalOverrideParams } = req.body; //remember to do .split('\n') and for each to get the stuff bla bla
     
     let urlsArray: string[] = url.split("\n").filter( (a:string) => a != "");
     let addedPicsArray: IDBEntry[] = [];
     
     const forLoopPromise = new Promise<IDBEntry[]>(async (resolve, reject) => {
       urlsArray.forEach(async (value: string, i: number) => {
-        const entry = await logic.processInput(value, album);
-        if (entry.imagesDataArray?.length) {
+        const entry = await logic.ProcessInput(value, type, album, optionalOverrideParams);
+        if (entry && entry.imagesDataArray?.length) {
           await database.addEntry(album, {
             ...entry,
             isNSFW: entry.isNSFW ?? false,
@@ -121,52 +155,77 @@ router.post(
 
   router.get("/albums", async (req, res) => {
     
-    const albums = await database.getAlbums(settings.show_hidden)
+    const albums = await database.getAlbums(settings.stock_settings.show_hidden.checkBoxValue)
     return res.status(200).json(albums);
   });
 
   router.post("/connection-test", async (req, res) => {
     const {
       database_url,
-      use_mongodb,
-      search_diff_sites,
-      saucenao_api_key,
-      pixiv_download_first_image_only,
-      show_nsfw,
-      blur_nsfw,
-      show_hidden,
-    } = req.body;
+      stock_settings,
+      special_settings,
+      special_params
+      } = req.body;
 
-    settings.search_diff_sites = search_diff_sites;
-    settings.show_nsfw = show_nsfw;
-    settings.blur_nsfw = blur_nsfw;
-    settings.show_hidden = show_hidden;
-
-    settings.pixiv_download_first_image_only =
-      pixiv_download_first_image_only;
-    if (search_diff_sites) {
-      let apiKeyCheck = await Logic.checkSauceNaoApi(saucenao_api_key);
-      if (apiKeyCheck) {
-        settings.saucenao_api_key = saucenao_api_key;
-        errorsObject.saucenaoApiKeyError = "";
-      } else
-        errorsObject.saucenaoApiKeyError =
-          "SauceNao api key invalid or expired";
-    }
-    if (use_mongodb) {
-      const canConnect = await MongoDatabaseLogic.testMongoDBConnection(database_url);
-      if (canConnect) {  
-        settings.database_url = database_url;
-        errorsObject.databaseUrlError = "";
+      const responseSettings = {
+        database_url,
+        stock_settings,
+        special_settings,
+        special_params
       }
-      else errorsObject.databaseUrlError = "Unable to connect to database";
+      
+
+    const errorsObject: IErrorObject = {
+      hasError: false,
+      responseSettings: responseSettings,
+    }  
+    
+    if (responseSettings.database_url.checkBoxValue) {
+      const canConnect = await MongoDatabaseLogic.testMongoDBConnection(responseSettings.database_url.stringValue.value);
+      if (canConnect) {  
+        settings.database_url = responseSettings.database_url;
+        responseSettings.database_url.errorMessage = "";
+      }
+      else responseSettings.database_url.errorMessage = "Unable to connect to database";
     }
+    
+      settings.stock_settings = responseSettings.stock_settings;
+      const arrayLength = logic.specialSettingValidityCheck.length
+      const validityCheckLoop = new Promise(async (resolve, reject) => {
+        logic.specialSettingValidityCheck.forEach(async (checkFunc, index) => {
+          const param = recursiveObjectIndex<IParam>(errorsObject.responseSettings, checkFunc.indexer);
+          if (param) {
+            param.errorMessage = await checkFunc.checkValid(param.checkBoxValue, param.stringValue?.value);
+            errorsObject.hasError = errorsObject.hasError || !!param.errorMessage
+            
+          }
+          if ((index + 1) == arrayLength) {
+            resolve(true)
+          }
+        })
+      })
+      await validityCheckLoop;
+
+    if (!errorsObject.hasError) {
+      settings.special_params = special_params;
+      settings.special_settings = special_settings;
+
+    }
+
     saveSettings();
     return res.status(200).json(errorsObject);
   });
 
   router.get("/types-of-models", async (req, res) => {
-    return res.status(200).json(typesOfModels);
+    return res.status(200).json(logic.supportedTypes);
+  });
+
+  router.get("/special-settings", async (req, res) => {
+    return res.status(200).json(logic.specialSettingsDictionary);
+  });
+
+  router.get("/special-params-dictionary", async (req, res) => {
+    return res.status(200).json(logic.specialParamsDictionary);
   });
 
   router.delete('/delete-entry-by-id', async (req, res) => {
@@ -199,3 +258,18 @@ router.post(
     database.handleHidingAlbumsByUUIDs(albumUUIDs, hide)
     res.status(200);
   })
+
+
+  export default router;
+
+  function recursiveObjectIndex<T>(objectToIndex:any, arrayOfIndexes: string[]): T | undefined {
+    
+    while (arrayOfIndexes.length) {
+      if (objectToIndex && Object.prototype.hasOwnProperty.call(objectToIndex, arrayOfIndexes[0])) {
+        return (recursiveObjectIndex(objectToIndex[arrayOfIndexes[0]], arrayOfIndexes.slice(1)) as T)
+      } else return undefined
+    } return objectToIndex
+  }
+
+  
+  

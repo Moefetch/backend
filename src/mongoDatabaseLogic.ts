@@ -4,7 +4,8 @@ import type {
     IFilterObj,
     IAlbumDictionaryItemMongo,
     IDBEntry,
-    AlbumSchemaType
+    AlbumSchemaType,
+    ITagEntryMongo
 } from "../types"
 import AlbumsDictionaryDB from "../models/MongoDBAlbumsDictionary";
 
@@ -12,10 +13,6 @@ import CreateTagsAutocompleteDBModel from "../models/schemas/CreateTagsAutocompl
 
 import CreateMongoDBEntryModel from "../models/schemas/CreateMongoDBEntryModel";
 import mongoose from "mongoose";
-const animePicTagsModel = CreateTagsAutocompleteDBModel("anime-pic-tags-db");
-const tagsDBDictionary = {
-  "Anime Pic": animePicTagsModel
-}
 
 
 let stroredModels: any = {
@@ -222,7 +219,7 @@ public async getAlbums(showHidden: boolean) {
    * addTagEntry
    */
    public addTagEntry(tag: string, type: AlbumSchemaType, tagToUpdateTo?: string) {
-    const TagsAutocompleteDB = tagsDBDictionary[type];
+    const TagsAutocompleteDB = this.tagsDBDictionary[type];
     TagsAutocompleteDB.updateOne({_id: tag}, {_id: tagToUpdateTo ?? tag}, {upsert: true})
   }
 
@@ -231,12 +228,13 @@ public async getAlbums(showHidden: boolean) {
   */
  public getTagsForAutocomplete(search: string, type: AlbumSchemaType) {
   const searchRegex = RegExp(search)
-  const TagsAutocompleteDB = tagsDBDictionary[type];
+  const TagsAutocompleteDB = this.tagsDBDictionary[type];
   return TagsAutocompleteDB.find({_id: {$regex: searchRegex}}).then(results => results.map(tag => tag._id))
  }
 
+ public tagsDBDictionary: {[x:string]: mongoose.Model<ITagEntryMongo>}
 
-  constructor(mongoDBURL: string) {
+  constructor(mongoDBURL: string, logicCategories: string[]) {
     mongoose.connect(mongoDBURL);
           
     mongoose.connection.on("error", function (error) {
@@ -245,7 +243,12 @@ public async getAlbums(showHidden: boolean) {
     mongoose.connection.on("open", function (ref) {
       console.log("Connected to Mongo server...");
     });
-
+    this.tagsDBDictionary = this.loadTagDictionary(logicCategories)
   }
-
+  private loadTagDictionary(logicCategories: string[]) {
+    return Object.fromEntries(logicCategories.map(category => {
+      const categoryTagModel = CreateTagsAutocompleteDBModel(category.replace(' ',"-").toLowerCase());
+      return [category, categoryTagModel]
+    }))
+  }
 }
