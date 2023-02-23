@@ -150,14 +150,54 @@ export interface IMongoDBEntry extends mongoose.Document {
     date_created?: number;
     //imageSize?: ISizeCalculationResult;
 }
+/* 
+export interface IModelSpecialParam {
+    name: string; //name of setting . variable
+    value: boolean | string; // default value or something 
+    supportedHostName:string; 
+    description: string; 
+}
+ */
+export interface IParam {
+    containsString: boolean;
+    checkBoxValue: boolean;
+    checkBoxDescription: string;
+  errorMessage?: string;
+    stringValue?: {
+        value: string,
+        stringPlaceholder: string,
+    }
+};
+
+export interface IParamValidityCheck {
+    indexer: string[];
+    checkValid: (
+        enabledBool: boolean,
+        stringValue?: string
+      ) => string | Promise<string | undefined> | undefined;
+}
+
+export interface IModelSpecialParam {
+    [name:string]: IParam
+}
+
 export interface ILogicModel {
     supportedHostName:string;
     //modelUtility: any; //cus i cannt put in a constructor type for each unique util
-    process: (inputUrl: string) => Promise<INewPicture>
+    process: (inputUrl: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary) => Promise<INewPicture>;
+    specialNewEntryParam?:IModelSpecialParam;
+    specialSettingsParam?:IModelSpecialParam;
+    specialSettingValidityCheckArray?: IParamValidityCheck[];
 }
 
 export interface IModelDictionary {
     [key:string]: ILogicModel['process'];
+}
+export interface ILogicSpecialSettingsDictionary {
+    [logicCategory: string]: ILogicCategorySpecialSettingsDictionary
+}
+export interface ILogicSpecialParamsDictionary {
+    [logicCategory: string]: ILogicCategorySpecialParamsDictionary
 }
 
 export interface ICategoryDictionary {
@@ -167,11 +207,26 @@ export interface ICategoryDictionary {
 export interface ILogicModelConstructor {
     default: {new (settings: ISettings):ILogicModel}
 }
+export interface ILogicCategorySpecialParamsDictionary {
+    specialCategoryParams?: IModelSpecialParam;
+    specialHostnameSpecificParams?: {
+        [hostname: string]: IModelSpecialParam;
+    }
+}
+export interface ILogicCategorySpecialSettingsDictionary {
+    specialCategorySettings?: IModelSpecialParam;
+    specialHostnameSpecificSettings?: {
+        [hostname: string]: IModelSpecialParam;
+    }
+}
 
 export interface ILogicCategory {
     logicCategory: string;
     processDictionary: IModelDictionary;
-    ProcessInput: (input: string | File, album: string) => Promise<INewPicture | undefined>
+    specialParamsDictionary?: ILogicCategorySpecialParamsDictionary;
+    specialSettingsDictionary?: ILogicCategorySpecialSettingsDictionary;
+    specialSettingValidityCheck?: IParamValidityCheck[];
+    ProcessInput: (input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary) => Promise<INewPicture | undefined>
 
 }
 
@@ -301,12 +356,16 @@ export interface IImageProps {
 }
 
 export interface IErrorObject {
-    backendUrlError: string;  
-    databaseUrlError: string; 
-    saucenaoApiKeyError: string
+    hasError: boolean;  
+    responseSettings: IResponseSettings;
 }
 
-
+export interface IResponseSettings {
+    database_url: IParam;
+    stock_settings: ISettings['stock_settings'];
+    special_settings: ISettings['special_settings'];
+    special_params: ISettings['special_params'];
+}
 
 export interface IPixivResponse {
     originalImageUrl: string;

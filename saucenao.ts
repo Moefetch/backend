@@ -1,13 +1,10 @@
 import fs from "fs";
-import https from "https";
 import stream from "stream";
-import querystring from "querystring";
 
 import { ISaucenaoResult, ISaucenaoResultObj } from "types";
 
 import FormData from "form-data";
 import fileType from "file-type";
-import { stringify } from "querystring";
 
 /**
  * creates a sauceNao instance

@@ -1,15 +1,25 @@
 import Utility from "src/Utility";
-import { INewAnimePic, IPixivResponse, IPixivTag, IRequestOptions, ISettings } from "types";
+import { IModelSpecialParam, INewAnimePic, IPixivResponse, IPixivTag, IRequestOptions, ISettings, ILogicCategorySpecialParamsDictionary } from "types";
 
 export class PixivModelUtility {
-  
+
+  public specialSettingsParam:IModelSpecialParam = {
+    "pixiv_cookie" : {
+      containsString: true,
+      checkBoxValue: false,
+      checkBoxDescription: "use a pixiv logged in cookie to access NSFW works",
+      stringValue: {
+        value: "",
+        stringPlaceholder: "Pixiv logged in cookie (for the option above)"
+      }
+    }
+  };
   
   /**
    * processPixivId
    * @param id post id
    */
-    public async processPixivId(id: string, arrayIndexer?: number) {
-      const dlFirstOnly = this.settings.pixiv_download_first_image_only;
+    public async processPixivId(id: string, dlFirstOnly: boolean, arrayIndexer?: number) {
       let resultantData: INewAnimePic = {
         data: {},
         isNSFW: false,
@@ -39,6 +49,7 @@ export class PixivModelUtility {
           resultantData.tags = pixivPostData.tags?.map((a: IPixivTag) => (a.enTranslation || a.romaji || a.tag))
           if (resultantData.tags && resultantData.tags[0] == 'manga') resultantData.tags.splice(0, 1)
           if (pixivPostData.tags && pixivPostData.tags[0].tag == "R-18") resultantData.isNSFW = true;
+          resultantData.indexer = dlFirstOnly ? 0 : resultantData.indexer
           return resultantData;
         }
     }
@@ -211,7 +222,7 @@ export class PixivModelUtility {
       }
   
 
-    public async getPixivCookies(url: string) {
+    public async getPixivCookies() {
       const response = (await this.utility.request(
         'https://www.pixiv.net/',
         "GET"
@@ -232,10 +243,10 @@ export class PixivModelUtility {
   constructor(settings: ISettings, utility: Utility) {
       this.settings = settings;
       this.pixivCookie = '';
-      this.utility = utility
-
-      if (settings.pixiv_cookie) this.pixivCookie = settings.pixiv_cookie;
-      else this.getPixivCookies('https://www.pixiv.net/en/').then(cookie => this.pixivCookie = cookie)
+      this.utility = utility;
+      
+      if (settings.special_settings["Anime Picture"].specialCategorySettings && settings.special_settings["Anime Picture"].specialCategorySettings.pixiv_cookie) this.pixivCookie = settings.special_settings["Anime Picture"].specialCategorySettings.pixiv_cookie.stringValue?.value ?? "";
+      else this.getPixivCookies().then(cookie => this.pixivCookie = cookie)
       this.processPixivId = this.processPixivId.bind(this)
       this.checkPixivImageUrlValid = this.checkPixivImageUrlValid.bind(this)
       this.getPixivImageData = this.getPixivImageData.bind(this)

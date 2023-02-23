@@ -24,10 +24,6 @@ import type {
   ILinePageResponse,
 } from "../types";
 
-
-// const shit = fs.readdirSync("../anime test/importedPics");
-// console.log(`../anime test/importedPics/${shit[2]}`);
-
 export default class logic {
   public sauceNao?: SauceNao;
   public settings: ISettings;

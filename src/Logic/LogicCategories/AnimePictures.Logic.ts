@@ -1,28 +1,47 @@
 import fs from 'fs'
 import SauceNao from "./AnimePictureLogicModels/UtilityForModels/Saucenao.Utilty";
 
-import { ILogicModel, IModelDictionary, ISettings, ILogicCategory, ILogicModelConstructor, IFilteredSaucenaoResult, INewAnimePic } from 'types';
+import { ILogicCategorySpecialParamsDictionary, ILogicCategorySpecialSettingsDictionary, ILogicModel, IModelDictionary, ISettings, ILogicCategory, ILogicModelConstructor, IFilteredSaucenaoResult, INewAnimePic, IModelSpecialParam, IParamValidityCheck } from 'types';
 import Utility from '../../Utility';
 
 export class CategoryLogic implements ILogicCategory {
     public logicCategory: string = "Anime Picture"
     public processDictionary:IModelDictionary;
+    public specialSettingValidityCheck: IParamValidityCheck[];
+    public specialSettingsDictionary: ILogicCategorySpecialSettingsDictionary | undefined;
+    public specialParamsDictionary?: ILogicCategorySpecialParamsDictionary = {specialCategoryParams: {}, specialHostnameSpecificParams: {}};
     private sauceNAO?: SauceNao
     private utility = new Utility()
     public settings: ISettings;
     constructor(settings: ISettings) {
-       this.settings = settings;
-      
-      this.processDictionary = this.loadModels(settings);
-      if (settings.saucenao_api_key) this.sauceNAO = new SauceNao(settings.saucenao_api_key);
+      this.settings = settings;
+      this.specialSettingsDictionary = {specialCategorySettings: {}, specialHostnameSpecificSettings: {}};
+      this.specialSettingsDictionary.specialCategorySettings = {};
+       
+      const loadedModels= this.loadModels(settings);
+      this.processDictionary = loadedModels.processDictionary;
+      this.specialSettingsDictionary = loadedModels.specialSettingsDictionary;
+      this.specialParamsDictionary = loadedModels.specialParamsDictionary;
+      this.specialSettingValidityCheck = [...loadedModels.specialSettingValidityCheckArray, ...SauceNao.specialSettingsParamValidityCheck];
+
+      if (
+          settings.special_settings["Anime Picture"].specialCategorySettings 
+          && settings.special_settings["Anime Picture"].specialCategorySettings.saucenao_api_key.checkBoxValue 
+          && settings.special_settings["Anime Picture"].specialCategorySettings.saucenao_api_key.stringValue?.value
+        ) 
+        this.sauceNAO = new SauceNao(settings.special_settings["Anime Picture"].specialCategorySettings.saucenao_api_key.stringValue.value);
+      if (this.specialSettingsDictionary.specialCategorySettings) {
+        Object.assign(this.specialSettingsDictionary.specialCategorySettings, SauceNao.specialSettingsParam)
+      } else this.specialSettingsDictionary.specialCategorySettings = SauceNao.specialSettingsParam
+
       this.processUrl = this.processUrl.bind(this) 
-      this.ProcessInput = this.ProcessInput.bind(this) 
+      this.ProcessInput = this.ProcessInput.bind(this);
     }
 
     /**
      * ProcessInput
      */
-    public async ProcessInput(input: string | File, album: string) {
+    public async ProcessInput(input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary) {
         let resultantData: INewAnimePic | undefined = {
             data: {},
             indexer: 0,
@@ -31,7 +50,7 @@ export class CategoryLogic implements ILogicCategory {
           };
           
           if (typeof input == "string"){
-            resultantData = (await this.processUrl(input)) as INewAnimePic | undefined;
+            resultantData = (await this.processUrl(input, optionalOverrideParams)) as INewAnimePic | undefined;
             if (resultantData && resultantData.urlsArray?.length) {
               const res = await this.utility.downloadAndGetFilePaths(resultantData, album, this.settings.downloadFolder)
               if ( res ) resultantData.imagesDataArray = res
@@ -41,20 +60,20 @@ export class CategoryLogic implements ILogicCategory {
             }
           }
           else {
-            resultantData = (await this.getImageDataFromRandomUrl(input)) ?? {data: {}, indexer: 0, imagesDataArray: []}
+            resultantData = (await this.getImageDataFromRandomUrl(input, optionalOverrideParams)) ?? {data: {}, indexer: 0, imagesDataArray: []}
           }
         return resultantData;
     }
 
-    private async processUrl(inputUrl: string)  {
+    private async processUrl(inputUrl: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary)  {
         const link = new URL(inputUrl);
         const processPromise = this.processDictionary[link.hostname] || this.getImageDataFromRandomUrl
         
         if (inputUrl.match(/[\?]*.(jpg|jpeg|gif|png|tiff|bmp)(\?(.*))?$/))
           if ((await this.utility.checkImageUrlValid(inputUrl)) == "OK") 
           {
-            if (this.settings.saucenao_api_key) {
-              const sauceParseRes = await this.getImageDataFromRandomUrl(inputUrl)
+            if (this.sauceNAO) {
+              const sauceParseRes = await this.getImageDataFromRandomUrl(inputUrl, optionalOverrideParams)
               const imageDimensions = await this.utility.getImageResolution(inputUrl);
               return sauceParseRes || {
                 data: {},
@@ -74,11 +93,15 @@ export class CategoryLogic implements ILogicCategory {
           }
 
         
-        return processPromise(inputUrl)
+        return processPromise(inputUrl, optionalOverrideParams)
 
     }
 
     private loadModels(settings: ISettings) {
+      let specialSettingValidityCheckArray: IParamValidityCheck[] = [];
+      let specialSettingsDictionary = {specialCategorySettings: {}, specialHostnameSpecificSettings: {}};
+      let specialParamsDictionary: Required<ILogicCategorySpecialParamsDictionary> = {specialCategoryParams: {}, specialHostnameSpecificParams: {}};
+      specialParamsDictionary.specialHostnameSpecificParams = {}
         const animePicModels = fs.readdirSync('./src/Logic/LogicCategories/AnimePictureLogicModels/').filter(file => file.endsWith('.ts'))
         const processDictionary:IModelDictionary = {};
         /* 
@@ -88,13 +111,42 @@ export class CategoryLogic implements ILogicCategory {
             return {[modelInstence.supportedHostName]: modelInstence.process}
         }) */
         animePicModels.forEach(model => {
-            const Model:ILogicModelConstructor = require(`./AnimePictureLogicModels/${model.substring(0, model.lastIndexOf('.'))}`);
-            const modelInstence:ILogicModel = new Model.default(settings)
-            processDictionary[modelInstence.supportedHostName] = modelInstence.process;
+          const Model:ILogicModelConstructor = require(`./AnimePictureLogicModels/${model.substring(0, model.lastIndexOf('.'))}`);
+          const modelInstence:ILogicModel = new Model.default(settings)
+          processDictionary[modelInstence.supportedHostName] = modelInstence.process;
+          modelInstence.specialNewEntryParam 
+          ? (specialParamsDictionary.specialHostnameSpecificParams[modelInstence.supportedHostName] = modelInstence.specialNewEntryParam) 
+          : ({})
+          ;
+
+          modelInstence.specialSettingsParam 
+          ? (Object.assign(specialSettingsDictionary.specialCategorySettings, modelInstence.specialSettingsParam)) 
+          : ({})
+          ;
+          modelInstence.specialSettingValidityCheckArray 
+          ? (specialSettingValidityCheckArray = [...specialSettingValidityCheckArray, ...modelInstence.specialSettingValidityCheckArray])
+          : ({})
         })
-    
-        return processDictionary;
-    }
+
+        const returnSpecialSettingsDictionary: ILogicCategorySpecialSettingsDictionary = {
+        }; 
+        
+        Object.getOwnPropertyNames(specialSettingsDictionary.specialCategorySettings).length ? returnSpecialSettingsDictionary.specialCategorySettings = specialSettingsDictionary.specialCategorySettings : undefined;
+        Object.getOwnPropertyNames(specialSettingsDictionary.specialHostnameSpecificSettings).length ? returnSpecialSettingsDictionary.specialHostnameSpecificSettings = specialSettingsDictionary.specialHostnameSpecificSettings : undefined;
+
+        const returnSpecialParamsDictionary: ILogicCategorySpecialParamsDictionary = {
+        }
+
+        Object.getOwnPropertyNames(specialParamsDictionary.specialCategoryParams).length ? returnSpecialParamsDictionary.specialCategoryParams = specialParamsDictionary.specialCategoryParams : undefined
+        Object.getOwnPropertyNames(specialParamsDictionary.specialHostnameSpecificParams).length ? returnSpecialParamsDictionary.specialHostnameSpecificParams = specialParamsDictionary.specialHostnameSpecificParams : undefined
+
+        return {
+          processDictionary: processDictionary, 
+          specialSettingsDictionary: returnSpecialSettingsDictionary, 
+          specialParamsDictionary: returnSpecialParamsDictionary,
+          specialSettingValidityCheckArray: specialSettingValidityCheckArray,
+        };
+      }
     
 
     
@@ -104,7 +156,7 @@ export class CategoryLogic implements ILogicCategory {
    * 
    */
 
-  public async getImageDataFromRandomUrl(url: string | File) {
+  public async getImageDataFromRandomUrl(url: string | File, optionalOverrideParams: ILogicCategorySpecialParamsDictionary) {
 
     if (this.sauceNAO) {
       const { resultArray } = await this.sauceNAO.getSauce(url);
@@ -128,7 +180,7 @@ export class CategoryLogic implements ILogicCategory {
 
           for (let urlsindex = 0; urlsindex < urlsToParse.length; urlsindex++) {
             const element = urlsToParse[urlsindex];
-            let animePic = (await this.processUrl(element)) as INewAnimePic | undefined;
+            let animePic = (await this.processUrl(element, optionalOverrideParams)) as INewAnimePic | undefined;
             
             if (animePic) {
             

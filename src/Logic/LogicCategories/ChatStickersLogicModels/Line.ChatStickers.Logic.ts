@@ -1,5 +1,5 @@
 import Utility from "../../../Utility";
-import { ILogicModel, INewPicture, ISettings } from "../../../../types";
+import { ILogicModel, IModelSpecialParam, INewPicture, ISettings } from "../../../../types";
 import { LineStickersModelUtility } from "./UtilityForModels/Line.ModelUtility";
 
 const utility = new Utility();
@@ -16,4 +16,10 @@ export default class LogicModel implements ILogicModel {
     public async process(inputUrl: string):Promise<INewPicture> {
         return this.lineStickersModelUtility.processLineStickerPage(inputUrl);
     }
+
+    
+    public specialNewEntryParam:IModelSpecialParam = {}; 
+    public specialSettingsParam:IModelSpecialParam = {};  
+
+    
 }

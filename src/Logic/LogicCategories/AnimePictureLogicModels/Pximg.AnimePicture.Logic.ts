@@ -1,5 +1,5 @@
 import Utility from "../../../Utility";
-import { ILogicModel, INewAnimePic, ISettings } from "../../../../types";
+import { ILogicModel, IModelSpecialParam, INewAnimePic, ISettings, ILogicCategorySpecialParamsDictionary } from "../../../../types";
 import { PixivModelUtility } from "./UtilityForModels/Pixiv.ModelUtility";
 
 const utility = new Utility();
@@ -13,16 +13,18 @@ export default class LogicModel implements ILogicModel {
         this.process = this.process.bind(this)
     }
     
-    public async process(url: string):Promise<INewAnimePic> {
+    public async process(url: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary):Promise<INewAnimePic> {
         let pixivPostId = url.substring(
             url.lastIndexOf('/') + 1);
 
-          const arrayIndexer = Number.parseInt(pixivPostId.substring(pixivPostId.search(/[^0-9]/) + 2, pixivPostId.indexOf('.')))
+          const dlFirstOnly = optionalOverrideParams.specialHostnameSpecificParams ? optionalOverrideParams.specialHostnameSpecificParams["i.pximg.net"]["only_download_selected_image"].checkBoxValue : this.specialNewEntryParam['only_download_selected_image'].checkBoxValue
+
+          const arrayIndexer = Number.parseInt(pixivPostId.substring(pixivPostId.indexOf('_p') + 2, pixivPostId.lastIndexOf('_')))
           pixivPostId = pixivPostId.substring(0, pixivPostId.search(/[^0-9]/));
           const isValid = ((await this.pixivModelUtility.checkPixivImageUrlValid(url)) == "OK");
           if (isValid) {
             const imgRes = await utility.getImageResolution(url)
-            const resultantData = (await this.pixivModelUtility.processPixivId(pixivPostId, arrayIndexer)) ?? {
+            const resultantData = (await this.pixivModelUtility.processPixivId(pixivPostId, dlFirstOnly, arrayIndexer)) ?? {
               data: {},
               imagesDataArray: [],
               urlsArray: [{
@@ -54,5 +56,15 @@ export default class LogicModel implements ILogicModel {
             indexer: 0,
           }
     }
-}
+
+    public specialNewEntryParam:IModelSpecialParam = {
+      "only_download_selected_image" : {
+      containsString: false,
+      checkBoxValue: false,
+          checkBoxDescription: "Only download selected image",
+      }
+  };
+  
+   //public specialSettingsParam:IModelSpecialParam = {};  
+  }
 

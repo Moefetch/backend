@@ -1,8 +1,11 @@
 import fs from 'fs'
-import { ILogicModel, IModelDictionary, ISettings, ILogicCategory, ILogicModelConstructor, INewPicture } from 'types';
+import { ILogicModel, IModelDictionary, ISettings, ILogicCategory, ILogicModelConstructor, INewPicture, ILogicCategorySpecialSettingsDictionary, ILogicCategorySpecialParamsDictionary } from 'types';
 import Utility from '../../Utility';
 
 export class CategoryLogic implements ILogicCategory {
+  public specialSettingsDictionary?: ILogicCategorySpecialSettingsDictionary;
+  public specialParamsDictionary?: ILogicCategorySpecialParamsDictionary;
+
     public logicCategory: string = "Chat Stickers"
     public processDictionary:IModelDictionary;
     private utility = new Utility()
@@ -17,7 +20,7 @@ export class CategoryLogic implements ILogicCategory {
     /**
      * ProcessInput
      */
-    public async ProcessInput(input: string | File, album: string) {
+    public async ProcessInput(input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary) {
         let resultantData: INewPicture|undefined = {
             data: {},
             indexer: 0,
@@ -26,7 +29,7 @@ export class CategoryLogic implements ILogicCategory {
           };
           
           if (typeof input == "string"){
-            resultantData = await this.processUrl(input);
+            resultantData = await this.processUrl(input, optionalOverrideParams);
             if (resultantData && resultantData.urlsArray?.length) {
               const res = await this.utility.downloadAndGetFilePaths(resultantData, album, this.settings.downloadFolder)
               if ( res ) resultantData.imagesDataArray = res
@@ -41,12 +44,12 @@ export class CategoryLogic implements ILogicCategory {
         return resultantData;
     }
 
-    private async processUrl(url: string)  {
+    private async processUrl(url: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary)  {
         const link = new URL(url);
         const processPromise = this.processDictionary[link.hostname]
         
         
-        return processPromise ? processPromise(url) : undefined;
+        return processPromise ? processPromise(url, optionalOverrideParams) : undefined;
 
     }
 

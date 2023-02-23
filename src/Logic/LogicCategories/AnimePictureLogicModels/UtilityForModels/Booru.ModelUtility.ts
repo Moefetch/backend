@@ -1,7 +1,7 @@
 import cheerio from "cheerio";
 
 import Utility from "src/Utility";
-import { IDanbooruResponse, INewAnimePic, IPostIds, IPostLinks, IRequestOptions, ISettings, ITagsObject } from "types";
+import { IDanbooruResponse, IModelSpecialParam, INewAnimePic, IPostIds, IPostLinks, IRequestOptions, ISettings, ITagsObject } from "types";
 
 export class BooruModelUtility {
   public settings: ISettings;

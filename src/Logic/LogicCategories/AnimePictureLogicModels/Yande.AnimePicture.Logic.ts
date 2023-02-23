@@ -1,5 +1,5 @@
 import Utility from "../../../Utility";
-import { ILogicModel, INewAnimePic, ISettings } from "../../../../types";
+import { ILogicModel, IModelSpecialParam, INewAnimePic, ISettings } from "../../../../types";
 import { BooruModelUtility } from "./UtilityForModels/Booru.ModelUtility";
 
 const utility = new Utility();
