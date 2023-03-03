@@ -14,7 +14,8 @@ export class CategoryLogic implements ILogicCategory {
         this.settings = settings;
 
         this.processDictionary = this.loadModels(settings);
-        
+        this.ProcessInput = this.ProcessInput.bind(this);
+        this.processUrl = this.processUrl.bind(this)
     }
 
     /**
@@ -48,6 +49,7 @@ export class CategoryLogic implements ILogicCategory {
         const link = new URL(url);
         const processPromise = this.processDictionary[link.hostname]
         
+        console.log(this.processDictionary, link.hostname );
         
         return processPromise ? processPromise(url, optionalOverrideParams) : undefined;
 

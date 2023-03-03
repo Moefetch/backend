@@ -260,7 +260,8 @@ export interface INewPicture {
     imageSize?: ISizeCalculationResult;
 
     //resulting data from parsing the sites
-    data: any
+    data: any;
+    isMultiSource?: boolean;
 }
 
 export interface INewAnimePic {
@@ -299,6 +300,7 @@ export interface INewAnimePic {
         pixiv?: IPixivResponse;
         line?: ILinePageResponse;
     }
+    
 }
 
 export interface IUrlsArray {

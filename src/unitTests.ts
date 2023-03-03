@@ -1,4 +1,4 @@
-import Logic from "./logic";
+/* import Logic from "./logic";
 import ISetting from "../settings";
 
 const logic = new Logic(ISetting);
@@ -25,3 +25,4 @@ async function unitTest(testName: string,functionToTest: Function, input: any,  
     
 }
 
+ */

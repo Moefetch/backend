@@ -158,7 +158,9 @@ const filter = showHidden ? {} : {isHidden: false};
   public addEntry(album: string, entryOBJ: IDBEntry, type: AlbumSchemaType) {
     const convertedEntry = this.convertIAnimePicToIEntry(entryOBJ)
     const newModelEntry = albumsDictionaryMap(album);
-    convertedEntry.tags?.forEach(tag => this.addTagEntry(tag, type))
+    if (convertedEntry.tags) {
+      convertedEntry.tags.forEach(tag => this.addTagEntry(tag, type))
+    }
     return new Promise<IDBEntry>((resolve, reject) => newModelEntry.insert(convertedEntry, (err, doc) => {
       err ? reject(err) : resolve(doc) 
       })

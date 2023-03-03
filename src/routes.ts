@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import express from "express";
-import { AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IParam } from "types";
+import { AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, INewPicture, IParam } from "types";
 import fs from "fs";
 import MongoDatabaseLogic from "./mongoDatabaseLogic";
 import {Logic} from "./Logic/Logic"
@@ -100,27 +100,67 @@ router.post(
   });
 
   router.post("/add-picture", async (req, res) => {
-    const { url, album, type, isHidden, optionalOverrideParams } = req.body; //remember to do .split('\n') and for each to get the stuff bla bla
+    const { url, album, type, isHidden, optionalOverrideParams, stockOptionalOverrides } = req.body; //remember to do .split('\n') and for each to get the stuff bla bla
     
     let urlsArray: string[] = url.split("\n").filter( (a:string) => a != "");
     let addedPicsArray: IDBEntry[] = [];
-    
+    let compiledEntry: INewPicture = {
+          data:{},
+          imagesDataArray:[],
+          indexer:0,
+          ids: {},
+          links: {},
+          isMultiSource: stockOptionalOverrides.compileAllLinksIntoOneEntry.checkBoxValue,
+        };
+        
     const forLoopPromise = new Promise<IDBEntry[]>(async (resolve, reject) => {
       urlsArray.forEach(async (value: string, i: number) => {
         const entry = await logic.ProcessInput(value, type, album, optionalOverrideParams);
         if (entry && entry.imagesDataArray?.length) {
-          await database.addEntry(album, {
-            ...entry,
-            isNSFW: entry.isNSFW ?? false,
-            id: uuidv4(),
-            album: album,
-            date_added: (new Date()).getTime(),
-            isHidden: isHidden
-          }, type)
-          .then(res => addedPicsArray.push(res))
-          .catch(console.log)
+          if (stockOptionalOverrides.compileAllLinksIntoOneEntry.checkBoxValue) {
+            compiledEntry.imagesDataArray = compiledEntry.imagesDataArray.concat(entry.imagesDataArray);
+            compiledEntry.urlsArray = entry.urlsArray ? compiledEntry.urlsArray?.concat(entry.urlsArray) : compiledEntry.urlsArray;
+            Object.assign(compiledEntry.ids, {[i]:  entry.ids})      
+            Object.assign(compiledEntry.links, {[i]:  entry.links});
+
+            if (entry.tags) {
+              compiledEntry.tags = compiledEntry.tags ? compiledEntry.tags.concat(entry.tags) : entry.tags
+            }
+     
+            if (entry.artists) {
+              compiledEntry.artists = compiledEntry.artists ? compiledEntry.artists.concat(entry.artists) : entry.artists
+            }
+            
+          } else {
+            await database.addEntry(album, {
+              ...entry,
+              isNSFW: entry.isNSFW ?? false,
+              id: uuidv4(),
+              album: album,
+              date_added: (new Date()).getTime(),
+              isHidden: isHidden
+            }, type)
+            .then(res => addedPicsArray.push(res))
+            .catch(console.log)
+          }
         }
-        if (i == urlsArray.length - 1) resolve(addedPicsArray)
+        if (i == urlsArray.length - 1) {
+          if (stockOptionalOverrides.compileAllLinksIntoOneEntry.checkBoxValue) {
+            console.log(compiledEntry);
+            
+            await database.addEntry(album, {
+              ...compiledEntry,
+              isNSFW: compiledEntry.isNSFW ?? false,
+              id: uuidv4(),
+              album: album,
+              date_added: (new Date()).getTime(),
+              isHidden: isHidden
+            }, type)
+            .then(res => addedPicsArray.push(res))
+            .catch(console.log)
+          }
+          resolve(addedPicsArray)
+        }
       });
     });
     const resPromise = await forLoopPromise;

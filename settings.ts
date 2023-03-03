@@ -5,6 +5,7 @@ type IStockSettings = {
     blur_nsfw: IParam;
     show_hidden: IParam;
     show_nsfw: IParam;
+    thumbnail_list_to_left: IParam;
 };
 
 
@@ -81,6 +82,11 @@ class Settings implements ISetting {
               checkBoxValue: true,
               checkBoxDescription: "Show NSFW tagged posts",
             },
+            thumbnail_list_to_left: {
+              containsString: false,
+              checkBoxValue: false,
+              checkBoxDescription: "Have the list of thumbnails on the left or on the bottom",
+            }
           }
 
         this.save();
