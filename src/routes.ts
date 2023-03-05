@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import express from "express";
-import { AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, INewPicture, IParam } from "types";
+import { AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, INewPicture, IParam, IPicFormStockOverrides } from "types";
 import fs from "fs";
 import MongoDatabaseLogic from "./mongoDatabaseLogic";
 import {Logic} from "./Logic/Logic"
@@ -102,7 +102,26 @@ router.post(
   router.post("/add-picture", async (req, res) => {
     const { url, album, type, isHidden, optionalOverrideParams, stockOptionalOverrides } = req.body; //remember to do .split('\n') and for each to get the stuff bla bla
     
-    let urlsArray: string[] = url.split("\n").filter( (a:string) => a != "");
+    let urlsArray: string[] = url.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
+    let addTagsArrayPerEntry: string[] | undefined = undefined;
+    if (stockOptionalOverrides.addTags.stringValue && stockOptionalOverrides.addTags.stringValue.value)
+    addTagsArrayPerEntry = stockOptionalOverrides.addTags.stringValue.value.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
+    let addidsArrayPerEntry: string[] | undefined = undefined;
+    if (stockOptionalOverrides.addId.stringValue && stockOptionalOverrides.addId.stringValue.value)
+    addidsArrayPerEntry = stockOptionalOverrides.addId.stringValue.value.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
+    let providedFileNamePerEntry: string[] | undefined = undefined;
+    
+    if (stockOptionalOverrides.useProvidedFileName.stringValue && stockOptionalOverrides.useProvidedFileName.stringValue.value)
+    providedFileNamePerEntry = stockOptionalOverrides.addId.stringValue.value.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
+    
+    let stockOptionalOverridesPerEntry: IPicFormStockOverrides = {
+      thumbnailFile: JSON.parse(JSON.stringify(stockOptionalOverrides.thumbnailFile)),
+      addId: JSON.parse(JSON.stringify(stockOptionalOverrides.addId)),
+      addTags: JSON.parse(JSON.stringify(stockOptionalOverrides.addTags)),
+      compileAllLinksIntoOneEntry: JSON.parse(JSON.stringify(stockOptionalOverrides.compileAllLinksIntoOneEntry)),
+      useProvidedFileName: JSON.parse(JSON.stringify(stockOptionalOverrides.useProvidedFileName)),
+    }
+    
     let addedPicsArray: IDBEntry[] = [];
     let compiledEntry: INewPicture = {
           data:{},
@@ -114,17 +133,29 @@ router.post(
         };
         
     const forLoopPromise = new Promise<IDBEntry[]>(async (resolve, reject) => {
-      urlsArray.forEach(async (value: string, i: number) => {
-        const entry = await logic.ProcessInput(value, type, album, optionalOverrideParams);
+      for (let i = 0; i < urlsArray.length; i++) {
+        const value = urlsArray[i];
+       setTimeout(() => {}, 10); //just wait a bit
+       if (stockOptionalOverridesPerEntry.addId.stringValue && addidsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addId.stringValue.value = addidsArrayPerEntry[ (i > addidsArrayPerEntry.length) ? (addidsArrayPerEntry.length - 1) : i];
+       if (stockOptionalOverridesPerEntry.addTags.stringValue && addTagsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addTags.stringValue.value = addTagsArrayPerEntry[ (i > addTagsArrayPerEntry.length) ? (addTagsArrayPerEntry.length - 1) : i];
+       if (stockOptionalOverridesPerEntry.useProvidedFileName.stringValue && providedFileNamePerEntry?.length) stockOptionalOverridesPerEntry.useProvidedFileName.stringValue.value = providedFileNamePerEntry[ (i > providedFileNamePerEntry.length) ? (providedFileNamePerEntry.length - 1) : i];
+
+        const entry = await logic.ProcessInput(value, type, album, optionalOverrideParams, stockOptionalOverridesPerEntry);
+        console.log(`${i} / ${urlsArray.length}`);
+        
         if (entry && entry.imagesDataArray?.length) {
+          if (stockOptionalOverridesPerEntry.addTags.stringValue?.value) {
+            entry.tags = entry.tags ? [...entry.tags, ...(stockOptionalOverridesPerEntry.addTags.stringValue.value as any).replaceAll(' ', "").split(',')] : (stockOptionalOverridesPerEntry.addTags.stringValue.value as any).replaceAll(' ', "").split(',');
+          }
+
           if (stockOptionalOverrides.compileAllLinksIntoOneEntry.checkBoxValue) {
             compiledEntry.imagesDataArray = compiledEntry.imagesDataArray.concat(entry.imagesDataArray);
             compiledEntry.urlsArray = entry.urlsArray ? compiledEntry.urlsArray?.concat(entry.urlsArray) : compiledEntry.urlsArray;
-            Object.assign(compiledEntry.ids, {[i]:  entry.ids})      
-            Object.assign(compiledEntry.links, {[i]:  entry.links});
+            entry.ids ? Object.assign(compiledEntry.ids, {[i]:  entry.ids})      : {};
+            entry.links ? Object.assign(compiledEntry.links, {[i]:  entry.links}) : {};
 
             if (entry.tags) {
-              compiledEntry.tags = compiledEntry.tags ? compiledEntry.tags.concat(entry.tags) : entry.tags
+              compiledEntry.tags = compiledEntry.tags ? compiledEntry.tags.concat(entry.tags) : entry.tags;
             }
      
             if (entry.artists) {
@@ -160,8 +191,8 @@ router.post(
             .catch(console.log)
           }
           resolve(addedPicsArray)
-        }
-      });
+        } 
+      }
     });
     const resPromise = await forLoopPromise;
     database.updateCountEntriesInAlbumByName(album)

@@ -1,7 +1,7 @@
 import fs from 'fs'
 import SauceNao from "./AnimePictureLogicModels/UtilityForModels/Saucenao.Utilty";
 
-import { ILogicCategorySpecialParamsDictionary, ILogicCategorySpecialSettingsDictionary, ILogicModel, IModelDictionary, ISettings, ILogicCategory, ILogicModelConstructor, IFilteredSaucenaoResult, INewAnimePic, IModelSpecialParam, IParamValidityCheck } from 'types';
+import { ILogicCategorySpecialParamsDictionary, ILogicCategorySpecialSettingsDictionary, ILogicModel, IModelDictionary, ISettings, ILogicCategory, ILogicModelConstructor, IFilteredSaucenaoResult, INewAnimePic, IModelSpecialParam, IParamValidityCheck, IPicFormStockOverrides } from 'types';
 import Utility from '../../Utility';
 
 export class CategoryLogic implements ILogicCategory {
@@ -41,7 +41,7 @@ export class CategoryLogic implements ILogicCategory {
     /**
      * ProcessInput
      */
-    public async ProcessInput(input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary) {
+    public async ProcessInput(input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) {
         let resultantData: INewAnimePic | undefined = {
             data: {},
             indexer: 0,
@@ -50,7 +50,7 @@ export class CategoryLogic implements ILogicCategory {
           };
           
           if (typeof input == "string"){
-            resultantData = (await this.processUrl(input, optionalOverrideParams)) as INewAnimePic | undefined;
+            resultantData = (await this.processUrl(input, optionalOverrideParams, stockOptionalOverrides)) as INewAnimePic | undefined;
             if (resultantData && resultantData.urlsArray?.length) {
               const res = await this.utility.downloadAndGetFilePaths(resultantData, album, this.settings.downloadFolder)
               if ( res ) resultantData.imagesDataArray = res
@@ -60,20 +60,20 @@ export class CategoryLogic implements ILogicCategory {
             }
           }
           else {
-            resultantData = (await this.getImageDataFromRandomUrl(input, optionalOverrideParams)) ?? {data: {}, indexer: 0, imagesDataArray: []}
+            resultantData = (await this.getImageDataFromRandomUrl(input, optionalOverrideParams, stockOptionalOverrides)) ?? {data: {}, indexer: 0, imagesDataArray: []}
           }
         return resultantData;
     }
 
-    private async processUrl(inputUrl: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary)  {
+    private async processUrl(inputUrl: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides)  {
         const link = new URL(inputUrl);
         const processPromise = this.processDictionary[link.hostname] || this.getImageDataFromRandomUrl
         
         if (inputUrl.match(/[\?]*.(jpg|jpeg|gif|png|tiff|bmp)(\?(.*))?$/))
-          if ((await this.utility.checkImageUrlValid(inputUrl)) == "OK") 
+          if ((await this.utility.checkImageUrlValid(inputUrl))) 
           {
             if (this.sauceNAO) {
-              const sauceParseRes = await this.getImageDataFromRandomUrl(inputUrl, optionalOverrideParams)
+              const sauceParseRes = await this.getImageDataFromRandomUrl(inputUrl, optionalOverrideParams, stockOptionalOverrides)
               const imageDimensions = await this.utility.getImageResolution(inputUrl);
               return sauceParseRes || {
                 data: {},
@@ -156,7 +156,7 @@ export class CategoryLogic implements ILogicCategory {
    * 
    */
 
-  public async getImageDataFromRandomUrl(url: string | File, optionalOverrideParams: ILogicCategorySpecialParamsDictionary) {
+  public async getImageDataFromRandomUrl(url: string | File, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) {
 
     if (this.sauceNAO) {
       const { resultArray } = await this.sauceNAO.getSauce(url);
@@ -180,7 +180,7 @@ export class CategoryLogic implements ILogicCategory {
 
           for (let urlsindex = 0; urlsindex < urlsToParse.length; urlsindex++) {
             const element = urlsToParse[urlsindex];
-            let animePic = (await this.processUrl(element, optionalOverrideParams)) as INewAnimePic | undefined;
+            let animePic = (await this.processUrl(element, optionalOverrideParams, stockOptionalOverrides)) as INewAnimePic | undefined;
             
             if (animePic) {
             

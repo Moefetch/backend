@@ -213,6 +213,15 @@ export interface ILogicCategorySpecialParamsDictionary {
         [hostname: string]: IModelSpecialParam;
     }
 }
+
+export interface IPicFormStockOverrides {
+    thumbnailFile: IParam;
+    compileAllLinksIntoOneEntry: IParam;
+    addId: IParam;
+    addTags: IParam;
+    useProvidedFileName: IParam;
+  }
+  
 export interface ILogicCategorySpecialSettingsDictionary {
     specialCategorySettings?: IModelSpecialParam;
     specialHostnameSpecificSettings?: {
@@ -226,7 +235,7 @@ export interface ILogicCategory {
     specialParamsDictionary?: ILogicCategorySpecialParamsDictionary;
     specialSettingsDictionary?: ILogicCategorySpecialSettingsDictionary;
     specialSettingValidityCheck?: IParamValidityCheck[];
-    ProcessInput: (input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary) => Promise<INewPicture | undefined>
+    ProcessInput: (input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewPicture | undefined>
 
 }
 

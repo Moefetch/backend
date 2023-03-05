@@ -1,5 +1,5 @@
 import fs from "fs";
-import { ICategoryDictionary, ILogicCategory, ILogicCategorySpecialParamsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, IParamValidityCheck, ISettings } from "types";
+import { ICategoryDictionary, ILogicCategory, ILogicCategorySpecialParamsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, IParam, IParamValidityCheck, IPicFormStockOverrides, ISettings } from "types";
 import settings from "../../settings";
 export class Logic {
     public settings: ISettings;
@@ -20,13 +20,10 @@ export class Logic {
     /**
      * ProcessInput
      */
-    public ProcessInput(input: string | File, type:string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary) {
+    public ProcessInput(input: string | File, type:string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) {
         const ass = this.categoryDictionary
-        console.log(ass, type);
-        console.log(this.supportedTypes);
 
-
-        return ass[type](input, album, optionalOverrideParams)
+        return ass[type](input, album, optionalOverrideParams, stockOptionalOverrides)
     }    
 
     private loadCategoryClasses() {

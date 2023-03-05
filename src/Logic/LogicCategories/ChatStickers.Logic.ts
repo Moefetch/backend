@@ -1,5 +1,5 @@
 import fs from 'fs'
-import { ILogicModel, IModelDictionary, ISettings, ILogicCategory, ILogicModelConstructor, INewPicture, ILogicCategorySpecialSettingsDictionary, ILogicCategorySpecialParamsDictionary } from 'types';
+import { ILogicModel, IModelDictionary, ISettings, ILogicCategory, ILogicModelConstructor, INewPicture, ILogicCategorySpecialSettingsDictionary, ILogicCategorySpecialParamsDictionary, IPicFormStockOverrides } from 'types';
 import Utility from '../../Utility';
 
 export class CategoryLogic implements ILogicCategory {
@@ -21,7 +21,7 @@ export class CategoryLogic implements ILogicCategory {
     /**
      * ProcessInput
      */
-    public async ProcessInput(input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary) {
+    public async ProcessInput(input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) {
         let resultantData: INewPicture|undefined = {
             data: {},
             indexer: 0,

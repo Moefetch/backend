@@ -35,7 +35,12 @@ export default class Utility {
 
     if (options && options.referrer) headersObj["referrer"] = options.referrer;
 
-    return fetch(element, headersObj);
+    return fetch(element, headersObj).catch(err => {
+      console.log("fetch request error: ", err);
+      
+      setTimeout(() => {}, 1000); // wait before retry
+      return fetch(element, headersObj)
+    });
   }
 
 
@@ -43,7 +48,7 @@ export default class Utility {
    * checkImageUrlValid
    */
   public async checkImageUrlValid(imageUrl: string, options?: { referrer?: string; altUsed?: string; providedHeaders?: RequestInit }) {
-    return (await this.request(imageUrl, "GET", options)).statusText
+    return ((await this.request(imageUrl, "GET", options)).statusText  == "OK")
   }
 
 
@@ -65,7 +70,7 @@ export default class Utility {
   public async getImageResolution(image: string | NodeJS.ReadableStream) {
     let imageProps: IImageProps;
     if (typeof image == 'string') {
-      if ((await this.checkImageUrlValid(image)) != "OK") return undefined;
+      if (!(await this.checkImageUrlValid(image))) return undefined;
       const resPromise: Promise<IImageProps> = new Promise(async (resolve, reject) => {
         if (~image.search(/^https?:\/\//)) {
           const urlParsed = new URL(image);
@@ -121,6 +126,9 @@ public async downloadAndGetFilePaths(
     resultantData: INewPicture,
     album: string,
     downloadFolder: string,
+    optional?: {
+      providedFileName?: string,
+  }
     ) {
   let result: INewPicture['imagesDataArray'] = [];
   let providedHeadersObj: RequestInit | undefined = undefined
@@ -129,50 +137,64 @@ public async downloadAndGetFilePaths(
     providedHeadersObj = resultantData.data[resultantData?.storedResult]?.requestOptions?.providedHeaders
   }
   if (urlsArray?.length){
+    let filePath:string = "";
   for (let index = 0; index < urlsArray.length; index++) {
     const element = urlsArray[index];
-  
-    
-    const filePath = await 
+    try {
+      filePath = await 
     this.downloadFromUrl(
         element.imageUrl,
         downloadFolder,
         `/saved_pictures/${album}`, 
-        {providedFileName: `${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]} - ${index} - ${Date.now()}`,
+        {providedFileName: optional?.providedFileName ?? `${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult] && resultantData.ids[resultantData.storedResult] || ''} - ${index} - ${Date.now()}`,
         providedHeaders: providedHeadersObj
       })
-
-
-    let fileThumbnailPath: string;
-    if (element.thumbnailUrl) {
-      fileThumbnailPath = await 
-            this.downloadFromUrl(
-                element.thumbnailUrl,
-                downloadFolder,
-                `/saved_pictures_thumbnails/${album}`, 
-                {providedFileName: `thumbnail - ${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]} - ${index} - ${Date.now()}`,
-                providedHeaders: providedHeadersObj
-            })
-    } else {
-      fileThumbnailPath = filePath
+    } catch (error) {
+      try {
+        filePath = await 
+    this.downloadFromUrl(
+        element.imageUrl,
+        downloadFolder,
+        `/saved_pictures/${album}`, 
+        {providedFileName: `${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult] && resultantData.ids[resultantData.storedResult] || ''} - ${index} - ${Date.now()}`,
+        providedHeaders: providedHeadersObj
+      })
+      } catch (error) {
+        
+      }
     }
-
-    let imageHeight: number = 0;
-    let imagewidth: number = 0;
-
-    if ( !element.height && !element.width) {
-      const imageDimensions = await this.getImageResolution(element.imageUrl)
-      imageHeight = imageDimensions?.imageSize.height ? imageDimensions.imageSize.height : 0;
-      imagewidth = imageDimensions?.imageSize.width ? imageDimensions.imageSize.width : 0;
-    }
-        result.push({
-          file: filePath,
-          thumbnail_file: fileThumbnailPath,
-          imageSize: {
-            height: element.height || imageHeight,
-            width: element.width || imagewidth
-          }
-        })
+    if (filePath) {
+      let fileThumbnailPath: string;
+      if (element.thumbnailUrl) {
+        fileThumbnailPath = await 
+              this.downloadFromUrl(
+                  element.thumbnailUrl,
+                  downloadFolder,
+                  `/saved_pictures_thumbnails/${album}`, 
+                  {providedFileName: optional?.providedFileName ? `thumbnail - ${optional?.providedFileName}` : `thumbnail - ${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]} - ${index} - ${Date.now()}`,
+                  providedHeaders: providedHeadersObj
+              })
+      } else {
+        fileThumbnailPath = filePath
+      }
+  
+      let imageHeight: number = 0;
+      let imagewidth: number = 0;
+  
+      if ( !element.height && !element.width) {
+        const imageDimensions = await this.getImageResolution(element.imageUrl)
+        imageHeight = imageDimensions?.imageSize.height ? imageDimensions.imageSize.height : 0;
+        imagewidth = imageDimensions?.imageSize.width ? imageDimensions.imageSize.width : 0;
+      }
+          result.push({
+            file: filePath,
+            thumbnail_file: fileThumbnailPath,
+            imageSize: {
+              height: element.height || imageHeight,
+              width: element.width || imagewidth
+            }
+          })
+      }
     }
     return result;
   }

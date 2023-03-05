@@ -21,7 +21,7 @@ export default class LogicModel implements ILogicModel {
 
           const arrayIndexer = Number.parseInt(pixivPostId.substring(pixivPostId.indexOf('_p') + 2, pixivPostId.lastIndexOf('_')))
           pixivPostId = pixivPostId.substring(0, pixivPostId.search(/[^0-9]/));
-          const isValid = ((await this.pixivModelUtility.checkPixivImageUrlValid(url)) == "OK");
+          const isValid = ((await this.pixivModelUtility.checkPixivImageUrlValid(url)));
           if (isValid) {
             const imgRes = await utility.getImageResolution(url)
             const resultantData = (await this.pixivModelUtility.processPixivId(pixivPostId, dlFirstOnly, arrayIndexer)) ?? {
