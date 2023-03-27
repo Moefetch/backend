@@ -24,7 +24,9 @@ export class BooruModelUtility {
       : (postUrl + ".json")
       ).replace('post/show/', "posts/");
 
-    const response = await this.utility.request(processedUrl, "GET");
+    const response = await this.utility.request(processedUrl, "GET", {providedHeaders: {method:"GET"} });
+    console.log(processedUrl);
+    
     const json = await response.json()
     return {
       imageUrl: json.file_url,
