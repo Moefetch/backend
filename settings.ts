@@ -1,4 +1,4 @@
-import fs from "fs";
+import * as fs from 'fs' 
 import { IParam, ILogicSpecialSettingsDictionary, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary } from "types";
 
 type IStockSettings = {

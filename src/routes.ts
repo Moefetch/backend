@@ -51,7 +51,7 @@ defaultSpecialSettingsOrParams: {[key: string]: any}
 compareSpecialSettingsToDefault(settings, "special_params", logic.specialParamsDictionary ?? {})
 compareSpecialSettingsToDefault(settings, "special_settings", logic.specialSettingsDictionary ?? {});
 
-const database = settings.database_url.stringValue?.value ? (new MongoDatabaseLogic(settings.database_url.stringValue.value, logic.supportedTypes)) : (new NeDBDatabaseLogic(logic.supportedTypes)) ;
+const database = (settings.database_url.checkBoxValue && settings.database_url.stringValue?.value) ? (new MongoDatabaseLogic(settings.database_url.stringValue.value, logic.supportedTypes)) : (new NeDBDatabaseLogic(logic.supportedTypes)) ;
 database.updateCountEntriesInAllAlbums()
  
 const router = express.Router();
