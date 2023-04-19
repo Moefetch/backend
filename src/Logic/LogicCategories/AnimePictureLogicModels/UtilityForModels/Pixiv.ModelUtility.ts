@@ -245,7 +245,8 @@ export class PixivModelUtility {
       this.pixivCookie = '';
       this.utility = utility;
       
-      if (settings.special_settings["Anime Picture"].specialCategorySettings && settings.special_settings["Anime Picture"].specialCategorySettings.pixiv_cookie) this.pixivCookie = settings.special_settings["Anime Picture"].specialCategorySettings.pixiv_cookie.stringValue?.value ?? "";
+      if (settings.special_settings["Anime Picture"]
+        && settings.special_settings["Anime Picture"].specialCategorySettings && settings.special_settings["Anime Picture"].specialCategorySettings.pixiv_cookie) this.pixivCookie = settings.special_settings["Anime Picture"].specialCategorySettings.pixiv_cookie.stringValue?.value ?? "";
       else this.getPixivCookies().then(cookie => this.pixivCookie = cookie)
       this.processPixivId = this.processPixivId.bind(this)
       this.checkPixivImageUrlValid = this.checkPixivImageUrlValid.bind(this)

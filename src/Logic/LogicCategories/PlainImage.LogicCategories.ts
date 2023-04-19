@@ -1,4 +1,4 @@
-import Utility from "../..//Utility";
+import Utility from "../../Utility";
 import { ILogicCategory, ILogicCategorySpecialParamsDictionary, IModelDictionary, INewPicture, IPicFormStockOverrides, ISettings } from "types";
 
 export class CategoryLogic implements ILogicCategory {

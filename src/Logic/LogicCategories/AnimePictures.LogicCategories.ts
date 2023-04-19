@@ -24,8 +24,8 @@ export class CategoryLogic implements ILogicCategory {
       this.specialParamsDictionary = loadedModels.specialParamsDictionary;
       this.specialSettingValidityCheck = [...loadedModels.specialSettingValidityCheckArray, ...SauceNao.specialSettingsParamValidityCheck];
 
-      if (
-          settings.special_settings["Anime Picture"].specialCategorySettings 
+      if (settings.special_settings["Anime Picture"]
+          && settings.special_settings["Anime Picture"].specialCategorySettings 
           && settings.special_settings["Anime Picture"].specialCategorySettings.saucenao_api_key.checkBoxValue 
           && settings.special_settings["Anime Picture"].specialCategorySettings.saucenao_api_key.stringValue?.value
         ) 
@@ -102,7 +102,7 @@ export class CategoryLogic implements ILogicCategory {
       let specialSettingsDictionary = {specialCategorySettings: {}, specialHostnameSpecificSettings: {}};
       let specialParamsDictionary: Required<ILogicCategorySpecialParamsDictionary> = {specialCategoryParams: {}, specialHostnameSpecificParams: {}};
       specialParamsDictionary.specialHostnameSpecificParams = {}
-        const animePicModels = fs.readdirSync('./src/Logic/LogicCategories/AnimePictureLogicModels/').filter(file => file.endsWith('.ts'))
+        const animePicModels = fs.readdirSync('./src/Logic/LogicCategories/AnimePictureLogicModels/').filter(file => file.endsWith('.ts') || file.endsWith('.js'))
         const processDictionary:IModelDictionary = {};
         /* 
         const ass:IModelDictionary = animePicModels.map(model=>{

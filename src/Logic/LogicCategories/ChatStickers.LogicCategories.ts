@@ -57,7 +57,7 @@ export class CategoryLogic implements ILogicCategory {
 
     private loadModels(settings: ISettings) {
         const processDictionary:IModelDictionary = {};
-        const animePicModels = fs.readdirSync('./src/Logic/LogicCategories/ChatStickersLogicModels/').filter(file => file.endsWith('.ts'))
+        const animePicModels = fs.readdirSync('./src/Logic/LogicCategories/ChatStickersLogicModels/').filter(file => file.endsWith('.ts') || file.endsWith('.js'))
         
         animePicModels.forEach(model => {
             const Model:ILogicModelConstructor = require(`./ChatStickersLogicModels/${model.substring(0, model.lastIndexOf('.'))}`);
