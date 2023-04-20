@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "dev": "ts-node makeSureMongoDbIsRunning.ts || start_mongodb.bat.lnk & ts-node index.ts",
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json & copy package.json dist & cd dist & pkg package.json & xcopy src dist\\src /i"
   },
   "author": "",
   "license": "ISC",
