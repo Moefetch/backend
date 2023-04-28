@@ -1,5 +1,5 @@
 import Utility from "../../../Utility";
-import { ILogicModel, IModelSpecialParam, INewAnimePic, ISettings, ILogicCategorySpecialParamsDictionary } from "../../../../types";
+import { ILogicModel, IModelSpecialParam, INewAnimePic, ISettings, ILogicCategorySpecialParamsDictionary, IPicFormStockOverrides } from "../../../../types";
 import { PixivModelUtility } from "./UtilityForModels/Pixiv.ModelUtility";
 
 const utility = new Utility();
@@ -13,7 +13,7 @@ export default class LogicModel implements ILogicModel {
         this.process = this.process.bind(this)
     }
     
-    public async process(url: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary):Promise<INewAnimePic> {
+    public async process(url: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides):Promise<INewAnimePic> {
         let pixivPostId = url.substring(
             url.lastIndexOf('/') + 1);
 
@@ -30,6 +30,7 @@ export default class LogicModel implements ILogicModel {
               urlsArray: [{
                 imageUrl: url,
                 thumbnailUrl: url,
+                isVideo: false,
                 height: imgRes?.imageSize.height ?? 0,
                 width: imgRes?.imageSize.height ?? 0,
 
@@ -46,6 +47,7 @@ export default class LogicModel implements ILogicModel {
             imagesDataArray: [],
             urlsArray: [{
               imageUrl: url,
+              isVideo: false,
               thumbnailUrl: url,
               height: 0,
               width: 0,

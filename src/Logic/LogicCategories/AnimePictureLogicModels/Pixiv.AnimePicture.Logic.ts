@@ -1,5 +1,5 @@
 import Utility from "../../../Utility";
-import { ILogicModel, INewAnimePic, ISettings, IModelSpecialParam, ILogicCategorySpecialParamsDictionary } from "../../../../types";
+import { ILogicModel, INewAnimePic, ISettings, IModelSpecialParam, ILogicCategorySpecialParamsDictionary, IPicFormStockOverrides } from "../../../../types";
 import { PixivModelUtility } from "./UtilityForModels/Pixiv.ModelUtility";
 
 const utility = new Utility();
@@ -16,12 +16,12 @@ export default class LogicModel implements ILogicModel {
         this.specialSettingsParam = this.pixivModelUtility.specialSettingsParam
     }
     
-    public async process(url: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary):Promise<INewAnimePic> {
+    public async process(url: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides):Promise<INewAnimePic> {
         const pixivPostId = url.substring(
             url.lastIndexOf(
                 url.includes('illust_id=') ? '=' : '/'
             ) + 1);
-          const dlFirstOnly = optionalOverrideParams.specialHostnameSpecificParams ? optionalOverrideParams.specialHostnameSpecificParams["www.pixiv.net"]["pixiv_download_first_image_only"].checkBoxValue : this.specialNewEntryParam['pixiv_download_first_image_only'].checkBoxValue
+          const dlFirstOnly = (optionalOverrideParams && optionalOverrideParams.specialHostnameSpecificParams) ? optionalOverrideParams.specialHostnameSpecificParams["www.pixiv.net"]["pixiv_download_first_image_only"].checkBoxValue : this.specialNewEntryParam['pixiv_download_first_image_only'].checkBoxValue
                         
             const res = (await this.pixivModelUtility.processPixivId(pixivPostId, dlFirstOnly)) ?? { data: {}, indexer: 0, imagesDataArray: []};
         return res

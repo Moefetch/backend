@@ -28,21 +28,26 @@ export class PixivModelUtility {
         imagesDataArray: []
       };
       const pixivPostData = await this.getPixivImageData(id, arrayIndexer);
-      
+      if (pixivPostData?.illustType == 2) {
+        //process video
+      } else 
         if (pixivPostData){
           
           resultantData.urlsArray =  pixivPostData.urlsArrayBody.map(a => ({
             imageUrl: a.urls.original,
+            isVideo: false,
             thumbnailUrl: a.urls.small,
             height: a.height,
             width: a.width,
           }))
+          resultantData.thumbnailURL = resultantData.urlsArray[arrayIndexer ?? 0].thumbnailUrl;
           resultantData.urlsArray = dlFirstOnly ? [resultantData.urlsArray[arrayIndexer ?? 0]] : resultantData.urlsArray;
           resultantData.data.pixiv = pixivPostData;
           resultantData.links = {pixiv: `https://www.pixiv.net/en/artworks/${id}`};
           resultantData.imageSize = {
             width: pixivPostData.width,
             height: pixivPostData.height }
+          resultantData.requestOptions = pixivPostData.requestOptions;
           resultantData.storedResult ="pixiv"
           resultantData.artists = [pixivPostData.authorName]
           resultantData.ids = {pixiv: pixivPostData.illustId}
@@ -88,22 +93,10 @@ export class PixivModelUtility {
     public async getPixivImageData(id: number | string, arrayIndexer?: number) {
     
         const cookies = this.pixivCookie;
-        
+
         let headersObj: RequestInit = {
           credentials: "include",
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
-            "Accept": "application/json",
-            "Accept-Language": "en-US,en;q=0.5",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-origin",
-            "Sec-GPC": "1",
-            "Pragma": "no-cache",
-            "Cache-Control": "no-cache",
-            cookie: cookies,
-            "referer" : "https://www.pixiv.net/",
-          },
+          headers: this.utility.defaultHeaders,
           referrer: `https://www.pixiv.net/en/artworks/${id}`,
           method: "GET",
           mode: "cors",
@@ -219,9 +212,11 @@ export class PixivModelUtility {
         
           return undefined;
       }
-      }
+    }
   
-
+    private getPixivVideoFromID() {
+      
+    }
     public async getPixivCookies() {
       const response = (await this.utility.request(
         'https://www.pixiv.net/',
@@ -245,13 +240,14 @@ export class PixivModelUtility {
       this.pixivCookie = '';
       this.utility = utility;
       
-      if (settings.special_settings["Anime Picture"]
-        && settings.special_settings["Anime Picture"].specialCategorySettings && settings.special_settings["Anime Picture"].specialCategorySettings.pixiv_cookie) this.pixivCookie = settings.special_settings["Anime Picture"].specialCategorySettings.pixiv_cookie.stringValue?.value ?? "";
+      if (settings.special_settings && settings.special_settings["Anime Picture"] && settings.special_settings["Anime Picture"].specialCategorySettings && settings.special_settings["Anime Picture"].specialCategorySettings.pixiv_cookie) 
+        this.pixivCookie = settings.special_settings["Anime Picture"].specialCategorySettings.pixiv_cookie.stringValue?.value ?? "";
       else this.getPixivCookies().then(cookie => this.pixivCookie = cookie)
       this.processPixivId = this.processPixivId.bind(this)
       this.checkPixivImageUrlValid = this.checkPixivImageUrlValid.bind(this)
       this.getPixivImageData = this.getPixivImageData.bind(this)
       this.getPixivCookies = this.getPixivCookies.bind(this)
 
-  }
+    }
+    
 }

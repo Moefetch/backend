@@ -25,11 +25,10 @@ export class BooruModelUtility {
       ).replace('post/show/', "posts/");
 
     const response = await this.utility.request(processedUrl, "GET", {providedHeaders: {method:"GET"} });
-    console.log(processedUrl);
     
     const json = await response.json()
     return {
-      imageUrl: json.file_url,
+      imageUrl: json.large_file_url ?? json.file_url,
       id: json.id,
       createDate: (new Date(json.created_at)).getTime(),
       updateDate: (new Date(json.updated_at)).getTime(),
@@ -41,7 +40,9 @@ export class BooruModelUtility {
         copyrights: json.tag_string_copyright.split(' '),
         characters: json.tag_string_character.split(' '),
         general: json.tag_string_general.split(' '),
+        meta: json.tag_string_meta.split(' '),
       },
+      isVideo: !!json.media_asset.duration,
       image_height: json.image_height,
       image_width: json.image_width,
 
@@ -58,18 +59,7 @@ export class BooruModelUtility {
   public async getYandeReImageData(postUrl: string) {
     let headersObj: RequestInit = {
       credentials: "omit",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
-        Accept: "image/avif,image/webp,*/*",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Sec-Fetch-Dest": "image",
-        "Sec-Fetch-Mode": "no-cors",
-        "Sec-Fetch-Site": "same-site",
-        "Sec-GPC": "1",
-        "Pragma": "no-cache",
-        "Cache-Control": "no-cache",
-      },
+      headers: this.utility.defaultHeaders,
       referrer: "https://yande.re/",
       method: "GET",
       mode: "cors",
@@ -145,13 +135,14 @@ public booruDictionary = {
   };
   let IPostLinksObj: IPostLinks = {};
   let idsObj:IPostIds = {};
-  let tagsObj: ITagsObject = {};
   const res = await this[this.booruDictionary[type]](inputUrl);
     resultantData.data[type] = res;
     if (res && res.imageUrl && res.previewImageUrl) {
       resultantData.storedResult = type;
+      let isVideo = res.imageUrl
       resultantData.urlsArray = [{ 
         imageUrl: res.imageUrl, 
+        isVideo: res.isVideo,
         thumbnailUrl: res.previewImageUrl,
         width: res.image_width,
         height: res.image_height 
@@ -159,6 +150,7 @@ public booruDictionary = {
       IPostLinksObj[type] = inputUrl;
       resultantData.links = IPostLinksObj;
       resultantData.date_created = res.createDate;
+      resultantData.thumbnailURL = res.previewImageUrl;
       resultantData.imageSize = {
         width: res.image_width,
         height: res.image_height 

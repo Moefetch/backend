@@ -5,18 +5,24 @@ import Utility from '../../Utility';
 export class CategoryLogic implements ILogicCategory {
   public specialSettingsDictionary?: ILogicCategorySpecialSettingsDictionary;
   public specialParamsDictionary?: ILogicCategorySpecialParamsDictionary;
+  public categoryFolder = 'ChatStickersLogicModels'
+  public logicCategory: string = "Chat Stickers"
+  public processDictionary:IModelDictionary;
+  private utility: Utility;
+  public settings: ISettings;
+  constructor(settings: ISettings, utility: Utility) {
+    this.settings = settings;
+    this.utility = utility;
 
-    public logicCategory: string = "Chat Stickers"
-    public processDictionary:IModelDictionary;
-    private utility = new Utility()
-    public settings: ISettings;
-    constructor(settings: ISettings) {
-        this.settings = settings;
+    const loadedModels = this.utility.loadModels(settings, this.categoryFolder);
+    this.processDictionary = loadedModels.processDictionary;
+    this.specialSettingsDictionary = loadedModels.specialSettingsDictionary;
+    this.specialParamsDictionary = loadedModels.specialParamsDictionary;
 
-        this.processDictionary = this.loadModels(settings);
-        this.ProcessInput = this.ProcessInput.bind(this);
-        this.processUrl = this.processUrl.bind(this)
-    }
+    //this.specialSettingValidityCheck = loadedModels.specialSettingValidityCheckArray
+    this.ProcessInput = this.ProcessInput.bind(this);
+    this.processUrl = this.processUrl.bind(this)
+  }
 
     /**
      * ProcessInput
@@ -30,14 +36,8 @@ export class CategoryLogic implements ILogicCategory {
           };
           
           if (typeof input == "string"){
-            resultantData = await this.processUrl(input, optionalOverrideParams);
-            if (resultantData && resultantData.urlsArray?.length) {
-              const res = await this.utility.downloadAndGetFilePaths(resultantData, album, this.settings.downloadFolder)
-              if ( res ) resultantData.imagesDataArray = res
-              if (resultantData.thumbnailFile) {
-                resultantData.thumbnailFile = await this.utility.downloadFromUrl(resultantData.thumbnailFile, this.settings.downloadFolder, `/saved_pictures_thumbnails/${album}`,{providedFileName: `thumbnailFile - ${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]}`})
-              } else resultantData.thumbnailFile = resultantData.imagesDataArray[resultantData.indexer].thumbnail_file
-            }
+            resultantData = await this.processUrl(input, album, optionalOverrideParams, stockOptionalOverrides);
+            
           }
           else {
             resultantData = {data: {}, indexer: 0, imagesDataArray: []} //no reverese image searvh for stickers no?
@@ -45,29 +45,14 @@ export class CategoryLogic implements ILogicCategory {
         return resultantData;
     }
 
-    private async processUrl(url: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary)  {
-        const link = new URL(url);
-        const processPromise = this.processDictionary[link.hostname]
+    private async processUrl(url: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) {
+      const link = new URL(url);
+      const processPromise = this.processDictionary[link.hostname]
         
-        console.log(this.processDictionary, link.hostname );
         
-        return processPromise ? processPromise(url, optionalOverrideParams) : undefined;
+      return processPromise ? processPromise(url, album, optionalOverrideParams, stockOptionalOverrides) : undefined;
 
     }
-
-    private loadModels(settings: ISettings) {
-        const processDictionary:IModelDictionary = {};
-        const animePicModels = fs.readdirSync('./src/Logic/LogicCategories/ChatStickersLogicModels/').filter(file => file.endsWith('.ts') || file.endsWith('.js'))
-        
-        animePicModels.forEach(model => {
-            const Model:ILogicModelConstructor = require(`./ChatStickersLogicModels/${model.substring(0, model.lastIndexOf('.'))}`);
-            const modelInstence:ILogicModel = new Model.default(settings)
-            processDictionary[modelInstence.supportedHostName] = modelInstence.process;
-        })
-    
-        return processDictionary;
-    }
-    
 
 
 }

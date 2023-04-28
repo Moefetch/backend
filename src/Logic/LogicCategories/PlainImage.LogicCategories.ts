@@ -4,7 +4,7 @@ import { ILogicCategory, ILogicCategorySpecialParamsDictionary, IModelDictionary
 export class CategoryLogic implements ILogicCategory {
     public logicCategory: string = "Plain image";
     public processDictionary: IModelDictionary = {};
-    private utility = new Utility()
+    private utility: Utility;
     public settings: ISettings;
     public async ProcessInput(input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides:IPicFormStockOverrides){
         let resultantData: INewPicture | undefined = {
@@ -17,14 +17,6 @@ export class CategoryLogic implements ILogicCategory {
           if (typeof input == "string"){
             if( await this.utility.checkImageUrlValid(input)) {
                 resultantData = await this.processUrl(input, optionalOverrideParams);
-                if (resultantData && resultantData.urlsArray?.length) {
-                    
-                    const res = await this.utility.downloadAndGetFilePaths(resultantData, album, this.settings.downloadFolder, {providedFileName:stockOptionalOverrides.useProvidedFileName.stringValue?.value})
-                    if ( res ) resultantData.imagesDataArray = res
-                    if (resultantData.thumbnailFile) {
-                        resultantData.thumbnailFile = await this.utility.downloadFromUrl(resultantData.thumbnailFile, this.settings.downloadFolder, `/saved_pictures_thumbnails/${album}`,{providedFileName: `thumbnailFile - ${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]}`})
-                    } else resultantData.thumbnailFile = resultantData.imagesDataArray[resultantData.indexer].thumbnail_file
-                }
             } else return undefined
           }
           else {
@@ -42,7 +34,8 @@ export class CategoryLogic implements ILogicCategory {
             imagesDataArray: [],
             urlsArray: [{
                 imageUrl:url, 
-                thumbnailUrl: url, 
+                thumbnailUrl: url,
+                isVideo: false, //needs to be changed
                 height: imageProps?.imageSize.height || 0, 
                 width: imageProps?.imageSize.width || 0 
             }],
@@ -52,8 +45,9 @@ export class CategoryLogic implements ILogicCategory {
 
     }
 
-    constructor(settings: ISettings){
+    constructor(settings: ISettings, utility: Utility){
         this.settings = settings;
+        this.utility = utility;
         this.ProcessInput = this.ProcessInput.bind(this);
     }
 }

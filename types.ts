@@ -96,6 +96,7 @@ export interface IPixivTags {
 }
 export interface IImageDataArray  {
     file: string;
+    isVideo: boolean;
     thumbnail_file: string;
     imageSize?: ISizeCalculationResult;
 }
@@ -184,7 +185,7 @@ export interface IModelSpecialParam {
 export interface ILogicModel {
     supportedHostName:string;
     //modelUtility: any; //cus i cannt put in a constructor type for each unique util
-    process: (inputUrl: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary) => Promise<INewPicture>;
+    process: (inputUrl: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewPicture>;
     specialNewEntryParam?:IModelSpecialParam;
     specialSettingsParam?:IModelSpecialParam;
     specialSettingValidityCheckArray?: IParamValidityCheck[];
@@ -193,6 +194,7 @@ export interface ILogicModel {
 export interface IModelDictionary {
     [key:string]: ILogicModel['process'];
 }
+
 export interface ILogicSpecialSettingsDictionary {
     [logicCategory: string]: ILogicCategorySpecialSettingsDictionary
 }
@@ -214,6 +216,12 @@ export interface ILogicCategorySpecialParamsDictionary {
     }
 }
 
+export interface ILogicCategorySpecialSettingsDictionary {
+    specialCategorySettings?: IModelSpecialParam;
+    specialHostnameSpecificSettings?: {
+        [hostname: string]: IModelSpecialParam;
+    }
+}
 export interface IPicFormStockOverrides {
     thumbnailFile: IParam;
     compileAllLinksIntoOneEntry: IParam;
@@ -222,15 +230,10 @@ export interface IPicFormStockOverrides {
     useProvidedFileName: IParam;
   }
   
-export interface ILogicCategorySpecialSettingsDictionary {
-    specialCategorySettings?: IModelSpecialParam;
-    specialHostnameSpecificSettings?: {
-        [hostname: string]: IModelSpecialParam;
-    }
-}
 
 export interface ILogicCategory {
     logicCategory: string;
+    categoryFolder?: string;
     processDictionary: IModelDictionary;
     specialParamsDictionary?: ILogicCategorySpecialParamsDictionary;
     specialSettingsDictionary?: ILogicCategorySpecialSettingsDictionary;
@@ -243,7 +246,6 @@ export interface INewPicture {
     //for mongo compatablity 
     id?: string;
     indexer: number;
-
     imagesDataArray: IImageDataArray[];
     
     
@@ -258,6 +260,7 @@ export interface INewPicture {
     isNSFW?: boolean;
     has_results?: boolean;
     
+    thumbnailURL?: string;
     thumbnailFile?: string;
     
     tags?: string[];
@@ -279,6 +282,7 @@ export interface INewAnimePic {
     indexer: number;
 
     imagesDataArray: IImageDataArray[];
+
     
     
     album?: string;
@@ -292,6 +296,7 @@ export interface INewAnimePic {
     isNSFW?: boolean;
     has_results?: boolean;
     
+    thumbnailURL?: string;
     thumbnailFile?: string;
     
     tags?: string[];
@@ -314,6 +319,7 @@ export interface INewAnimePic {
 
 export interface IUrlsArray {
     imageUrl: string;
+    isVideo: boolean;
     thumbnailUrl: string;
     width: number;
     height: number;
@@ -378,6 +384,63 @@ export interface IResponseSettings {
     special_params: ISettings['special_params'];
 }
 
+export interface IInstagramQueryResponse {
+    id: string;
+    shortcode: string;
+    dimensions: {
+        width: number;
+        height: number;
+    };
+    video_url: string;
+    is_video?: boolean;
+    owner: IInstagramResponse_owner;
+    edge_sidecar_to_children?: IInstagramResponse_edge_sidecar_to_children;
+    edge_media_to_caption: {
+        edges:{
+            node: {
+                created_at: number;
+                text: string;
+            };
+        }[];
+    }
+    thumbnail_src?: string;
+    display_url?: string;
+
+}
+export interface IInstagramResponse_owner {
+    id: string;
+    username: string;
+    full_name: string;
+    
+}
+export interface IInstagramResponse_edge_sidecar_to_children {
+    edges: IInstagramResponse_edges[]
+    
+}
+export interface IInstagramResponse_edges {
+    node: {
+        is_video : boolean;
+        video_url?: string;
+        display_url?: string;
+        dimensions: {
+            width: number;
+            height: number;
+        };
+        display_resources: {
+            src: string;
+            config_width: number;
+            config_height: number;
+        }[]
+    }
+}
+
+export interface IInstagramCookieOBJ {
+    csrf_token: string;
+    app_id: string;
+    device_id: string;
+    ASBD_ID: string;
+}
+
 export interface IPixivResponse {
     originalImageUrl: string;
     //urlsArray?: string[];
@@ -396,6 +459,7 @@ export interface IPixivResponse {
     urlsArrayBody: pixivUrlsArrayElement[];
     requestOptions?: IRequestOptions
 }
+
 interface pixivUrlsArrayElement {
     urls: {
         thumb_mini?: string;
@@ -413,6 +477,7 @@ export interface IDanbooruResponse {
     image_height: number;
     createDate: number;
     rating: string;
+    isVideo: boolean;
     isNsfw: boolean;
     updateDate: number;
     previewImageUrl: string;
@@ -437,6 +502,7 @@ export interface IDanbooruTags {
     copyrights?: string[];
     characters?: string[];
     general?: string[];
+    meta?: string[];
 }
 export interface IPixivTag {
     tag: string;

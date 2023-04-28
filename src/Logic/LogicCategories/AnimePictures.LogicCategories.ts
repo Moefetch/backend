@@ -7,24 +7,26 @@ import Utility from '../../Utility';
 export class CategoryLogic implements ILogicCategory {
     public logicCategory: string = "Anime Picture"
     public processDictionary:IModelDictionary;
+    public categoryFolder = "AnimePictureLogicModels";
     public specialSettingValidityCheck: IParamValidityCheck[];
     public specialSettingsDictionary: ILogicCategorySpecialSettingsDictionary | undefined;
     public specialParamsDictionary?: ILogicCategorySpecialParamsDictionary = {specialCategoryParams: {}, specialHostnameSpecificParams: {}};
     private sauceNAO?: SauceNao
-    private utility = new Utility()
+    private utility: Utility;
     public settings: ISettings;
-    constructor(settings: ISettings) {
+    constructor(settings: ISettings, utility: Utility) {
       this.settings = settings;
+      this.utility = utility;
       this.specialSettingsDictionary = {specialCategorySettings: {}, specialHostnameSpecificSettings: {}};
       this.specialSettingsDictionary.specialCategorySettings = {};
        
-      const loadedModels= this.loadModels(settings);
+      const loadedModels = this.utility.loadModels(settings, this.categoryFolder);
       this.processDictionary = loadedModels.processDictionary;
       this.specialSettingsDictionary = loadedModels.specialSettingsDictionary;
       this.specialParamsDictionary = loadedModels.specialParamsDictionary;
       this.specialSettingValidityCheck = [...loadedModels.specialSettingValidityCheckArray, ...SauceNao.specialSettingsParamValidityCheck];
 
-      if (settings.special_settings["Anime Picture"]
+      if (settings.special_settings && settings.special_settings["Anime Picture"]
           && settings.special_settings["Anime Picture"].specialCategorySettings 
           && settings.special_settings["Anime Picture"].specialCategorySettings.saucenao_api_key.checkBoxValue 
           && settings.special_settings["Anime Picture"].specialCategorySettings.saucenao_api_key.stringValue?.value
@@ -42,30 +44,21 @@ export class CategoryLogic implements ILogicCategory {
      * ProcessInput
      */
     public async ProcessInput(input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) {
-        let resultantData: INewAnimePic | undefined = {
-            data: {},
-            indexer: 0,
-            isNSFW: false,
-            imagesDataArray: []
-          };
+      let resultantData: INewAnimePic | undefined = {
+        data: {},
+        indexer: 0,
+        isNSFW: false,
+        imagesDataArray: []
+      };
           
-          if (typeof input == "string"){
-            resultantData = (await this.processUrl(input, optionalOverrideParams, stockOptionalOverrides)) as INewAnimePic | undefined;
-            if (resultantData && resultantData.urlsArray?.length) {
-              const res = await this.utility.downloadAndGetFilePaths(resultantData, album, this.settings.downloadFolder)
-              if ( res ) resultantData.imagesDataArray = res
-              if (resultantData.thumbnailFile) {
-                resultantData.thumbnailFile = await this.utility.downloadFromUrl(resultantData.thumbnailFile, this.settings.downloadFolder, `/saved_pictures_thumbnails/${album}`,{providedFileName: `thumbnailFile - ${resultantData.storedResult ?? ''} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]}`})
-              } else resultantData.thumbnailFile = resultantData.imagesDataArray[resultantData.indexer].thumbnail_file
-            }
-          }
-          else {
-            resultantData = (await this.getImageDataFromRandomUrl(input, optionalOverrideParams, stockOptionalOverrides)) ?? {data: {}, indexer: 0, imagesDataArray: []}
-          }
-        return resultantData;
+      resultantData = 
+      (typeof input == "string") ?
+        ((await this.processUrl(input, album, optionalOverrideParams, stockOptionalOverrides)) as INewAnimePic | undefined) : 
+        (await this.getImageDataFromRandomUrl(input, album, optionalOverrideParams, stockOptionalOverrides)) ?? {data: {}, indexer: 0, imagesDataArray: []};
+      return resultantData;
     }
 
-    private async processUrl(inputUrl: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides)  {
+    private async processUrl(inputUrl: string, album:string,  optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides)  {
         const link = new URL(inputUrl);
         const processPromise = this.processDictionary[link.hostname] || this.getImageDataFromRandomUrl
         
@@ -73,7 +66,7 @@ export class CategoryLogic implements ILogicCategory {
           if ((await this.utility.checkImageUrlValid(inputUrl))) 
           {
             if (this.sauceNAO) {
-              const sauceParseRes = await this.getImageDataFromRandomUrl(inputUrl, optionalOverrideParams, stockOptionalOverrides)
+              const sauceParseRes = await this.getImageDataFromRandomUrl(inputUrl, album, optionalOverrideParams, stockOptionalOverrides)
               const imageDimensions = await this.utility.getImageResolution(inputUrl);
               return sauceParseRes || {
                 data: {},
@@ -83,6 +76,7 @@ export class CategoryLogic implements ILogicCategory {
                 foundUrl: inputUrl,
                 urlsArray: [{
                   imageUrl: inputUrl,
+                  isVideo: false,
                   thumbnailUrl: inputUrl,
                   height: imageDimensions?.imageSize?.height || 0,
                   width: imageDimensions?.imageSize?.width || 0
@@ -93,61 +87,9 @@ export class CategoryLogic implements ILogicCategory {
           }
 
         
-        return processPromise(inputUrl, optionalOverrideParams)
+        return processPromise(inputUrl, album, optionalOverrideParams, stockOptionalOverrides)
 
     }
-
-    private loadModels(settings: ISettings) {
-      let specialSettingValidityCheckArray: IParamValidityCheck[] = [];
-      let specialSettingsDictionary = {specialCategorySettings: {}, specialHostnameSpecificSettings: {}};
-      let specialParamsDictionary: Required<ILogicCategorySpecialParamsDictionary> = {specialCategoryParams: {}, specialHostnameSpecificParams: {}};
-      specialParamsDictionary.specialHostnameSpecificParams = {}
-        const animePicModels = fs.readdirSync('./src/Logic/LogicCategories/AnimePictureLogicModels/').filter(file => file.endsWith('.ts') || file.endsWith('.js'))
-        const processDictionary:IModelDictionary = {};
-        /* 
-        const ass:IModelDictionary = animePicModels.map(model=>{
-            const Model:ILogicModelConstructor = require(`./AnimePictureLogicModels/${model.substring(0, model.lastIndexOf('.'))}`);
-            const modelInstence:ILogicModel = new Model.default(settings)
-            return {[modelInstence.supportedHostName]: modelInstence.process}
-        }) */
-        animePicModels.forEach(model => {
-          const Model:ILogicModelConstructor = require(`./AnimePictureLogicModels/${model.substring(0, model.lastIndexOf('.'))}`);
-          const modelInstence:ILogicModel = new Model.default(settings)
-          processDictionary[modelInstence.supportedHostName] = modelInstence.process;
-          modelInstence.specialNewEntryParam 
-          ? (specialParamsDictionary.specialHostnameSpecificParams[modelInstence.supportedHostName] = modelInstence.specialNewEntryParam) 
-          : ({})
-          ;
-
-          modelInstence.specialSettingsParam 
-          ? (Object.assign(specialSettingsDictionary.specialCategorySettings, modelInstence.specialSettingsParam)) 
-          : ({})
-          ;
-          modelInstence.specialSettingValidityCheckArray 
-          ? (specialSettingValidityCheckArray = [...specialSettingValidityCheckArray, ...modelInstence.specialSettingValidityCheckArray])
-          : ({})
-        })
-
-        const returnSpecialSettingsDictionary: ILogicCategorySpecialSettingsDictionary = {
-        }; 
-        
-        Object.getOwnPropertyNames(specialSettingsDictionary.specialCategorySettings).length ? returnSpecialSettingsDictionary.specialCategorySettings = specialSettingsDictionary.specialCategorySettings : undefined;
-        Object.getOwnPropertyNames(specialSettingsDictionary.specialHostnameSpecificSettings).length ? returnSpecialSettingsDictionary.specialHostnameSpecificSettings = specialSettingsDictionary.specialHostnameSpecificSettings : undefined;
-
-        const returnSpecialParamsDictionary: ILogicCategorySpecialParamsDictionary = {
-        }
-
-        Object.getOwnPropertyNames(specialParamsDictionary.specialCategoryParams).length ? returnSpecialParamsDictionary.specialCategoryParams = specialParamsDictionary.specialCategoryParams : undefined
-        Object.getOwnPropertyNames(specialParamsDictionary.specialHostnameSpecificParams).length ? returnSpecialParamsDictionary.specialHostnameSpecificParams = specialParamsDictionary.specialHostnameSpecificParams : undefined
-
-        return {
-          processDictionary: processDictionary, 
-          specialSettingsDictionary: returnSpecialSettingsDictionary, 
-          specialParamsDictionary: returnSpecialParamsDictionary,
-          specialSettingValidityCheckArray: specialSettingValidityCheckArray,
-        };
-      }
-    
 
     
   /**
@@ -156,7 +98,7 @@ export class CategoryLogic implements ILogicCategory {
    * 
    */
 
-  public async getImageDataFromRandomUrl(url: string | File, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) {
+  public async getImageDataFromRandomUrl(url: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) {
 
     if (this.sauceNAO) {
       const { resultArray } = await this.sauceNAO.getSauce(url);
@@ -180,7 +122,7 @@ export class CategoryLogic implements ILogicCategory {
 
           for (let urlsindex = 0; urlsindex < urlsToParse.length; urlsindex++) {
             const element = urlsToParse[urlsindex];
-            let animePic = (await this.processUrl(element, optionalOverrideParams, stockOptionalOverrides)) as INewAnimePic | undefined;
+            let animePic = (await this.processUrl(element, album, optionalOverrideParams, stockOptionalOverrides)) as INewAnimePic | undefined;
             
             if (animePic) {
             

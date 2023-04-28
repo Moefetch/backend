@@ -29,6 +29,7 @@ public async processLineStickerPage(inputUrl: string) {
   resultantData.urlsArray = linePageData.urlsArray.map(uE => ({
     imageUrl: uE,
     thumbnailUrl: '',
+    isVideo: false,
     width: 0,
     height: 0,
   }))
@@ -37,7 +38,7 @@ public async processLineStickerPage(inputUrl: string) {
   resultantData.storedResult = 'line'
   resultantData.artists = [linePageData.authorName]
   resultantData.ids = {line: Number.parseInt(inputUrl.substring(inputUrl.indexOf('product/') + 8, inputUrl.indexOf('/en')))}
-  resultantData.thumbnailFile = linePageData.previewImageUrl;
+  resultantData.thumbnailURL = linePageData.previewImageUrl;
   return resultantData
   }
   else return { data: {}, indexer: 0, imagesDataArray: []}
@@ -52,19 +53,7 @@ public async getLineStickerPageData(inputUrl: string) {
 
   let headersObj: RequestInit = {
     credentials: "include",
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
-      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.5",
-      "Upgrade-Insecure-Requests": "1",
-      "Sec-Fetch-Dest": "document",
-      "Sec-Fetch-Mode": "navigate",
-      "Sec-Fetch-Site": "none",
-      "Sec-Fetch-User": "?1",
-      "Sec-GPC": "1",
-      "Pragma": "no-cache",
-      "Cache-Control": "no-cache"
-    },
+    headers: this.utility.defaultHeaders,
     method: "GET",
     mode: "cors",
   };
@@ -92,17 +81,7 @@ public async getLineStickerPageData(inputUrl: string) {
     
     let providedDownloadHeaders: IRequestOptions = {providedHeaders: headersObj = {
       "credentials": "omit",
-      "headers": {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0",
-        "Accept": "image/avif,image/webp,*/*",
-        "Accept-Language": "en-US,en;q=0.5",
-        "Sec-Fetch-Dest": "image",
-        "Sec-Fetch-Mode": "no-cors",
-        "Sec-Fetch-Site": "cross-site",
-        "Sec-GPC": "1",
-        "Pragma": "no-cache",
-        "Cache-Control": "no-cache"
-        },
+      "headers": this.utility.defaultHeaders,
       "referrer": "https://store.line.me/",
       "method": "GET",
       "mode": "cors"
