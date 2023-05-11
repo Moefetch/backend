@@ -142,8 +142,10 @@ router.post(
 
         const entry = await logic.ProcessInput(value, type, album, optionalOverrideParams, stockOptionalOverridesPerEntry);
         console.log(`${i} / ${urlsArray.length}`);
-        
+        let hasVideo = false;
         if (entry && entry.imagesDataArray?.length) {
+          hasVideo = !!entry.imagesDataArray.filter(fl => fl.isVideo).length
+
           if (stockOptionalOverridesPerEntry.addTags.stringValue?.value) {
             entry.tags = entry.tags ? [...entry.tags, ...(stockOptionalOverridesPerEntry.addTags.stringValue.value as any).replaceAll(' ', "").split(',')] : (stockOptionalOverridesPerEntry.addTags.stringValue.value as any).replaceAll(' ', "").split(',');
           }
@@ -153,7 +155,7 @@ router.post(
             compiledEntry.urlsArray = entry.urlsArray ? compiledEntry.urlsArray?.concat(entry.urlsArray) : compiledEntry.urlsArray;
             entry.ids ? Object.assign(compiledEntry.ids, {[i]:  entry.ids})      : {};
             entry.links ? Object.assign(compiledEntry.links, {[i]:  entry.links}) : {};
-
+            compiledEntry.hasVideo = compiledEntry.hasVideo ?? hasVideo;
             if (entry.tags) {
               compiledEntry.tags = compiledEntry.tags ? compiledEntry.tags.concat(entry.tags) : entry.tags;
             }
@@ -167,6 +169,7 @@ router.post(
               ...entry,
               isNSFW: entry.isNSFW ?? false,
               id: uuidv4(),
+              hasVideo: hasVideo,
               album: album,
               date_added: (new Date()).getTime(),
               isHidden: isHidden
@@ -176,13 +179,12 @@ router.post(
           }
         }
         if (i == urlsArray.length - 1) {
-          if (stockOptionalOverrides.compileAllLinksIntoOneEntry.checkBoxValue) {
-            console.log(compiledEntry);
-            
+          if (stockOptionalOverrides.compileAllLinksIntoOneEntry.checkBoxValue) {      
             await database.addEntry(album, {
               ...compiledEntry,
               isNSFW: compiledEntry.isNSFW ?? false,
               id: uuidv4(),
+              hasVideo: hasVideo,
               album: album,
               date_added: (new Date()).getTime(),
               isHidden: isHidden
@@ -238,6 +240,7 @@ router.post(
       special_params
       } = req.body;
 
+
       const responseSettings = {
         database_url,
         stock_settings,
@@ -257,7 +260,9 @@ router.post(
         settings.database_url = responseSettings.database_url;
         responseSettings.database_url.errorMessage = "";
       }
-      else responseSettings.database_url.errorMessage = "Unable to connect to database";
+      else {
+        errorsObject.hasError = true;
+        responseSettings.database_url.errorMessage = "Unable to connect to database";}
     }
     
       settings.stock_settings = responseSettings.stock_settings;

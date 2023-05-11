@@ -104,6 +104,7 @@ export interface IDBEntry {
     id: string;
     indexer: number;
     name?: string;
+    hasVideo: boolean;
     imagesDataArray: IImageDataArray[];
     alternative_names?: string[];
     oldImagesDataArray?: IImageDataArray[];
@@ -129,6 +130,8 @@ export interface IDBEntry {
 export interface IMongoDBEntry extends mongoose.Document {
     id: string;
     indexer: number;
+    hasVideo: boolean;
+
     name?: string;
     imagesDataArray: IImageDataArray[];
     alternative_names?: string[];
@@ -248,7 +251,7 @@ export interface INewPicture {
     indexer: number;
     imagesDataArray: IImageDataArray[];
     
-    
+    hasVideo?: boolean;
     album?: string;
     
     

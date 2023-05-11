@@ -11,18 +11,6 @@ const utility = new Utility();
 console.log('Settings: ', settings);
 
 
-//import AnimePic from "./models/AnimePic";
-
-import CreateAnimePicModel from "./models/schemas/CreateMongoDBEntryModel";
-import {
-  IAlbumDictionaryItem,
-  AlbumSchemaType,
-  IMongoDBEntry,
-  IErrorObject,
-  IFilterObj,
-  IDBEntry,
-} from "types";
-
 if (!utility.checkDirectory(`${settings.downloadFolder}/album_thumbnail_files/`)) {
   utility.downloadFromUrl(
     "https://raw.githubusercontent.com/Moefetch/backend/33a32fb43464e006eb84c43202b8350d68136e75/image.svg",

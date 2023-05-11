@@ -94,9 +94,7 @@ public async processInstagramPost(inputUrl: string, album: string, optionalOverr
   resultantData.storedResult = 'instagram'
   resultantData.artists = [instaPageData.owner.username]
   resultantData.ids = {instagram: instaPageData.shortcode};
-  
-  console.log(instaPageData.thumbnail_src, instaPageData.display_url, instaPageData.edge_sidecar_to_children?.edges[0].node.display_resources[0].src, instaPageData.edge_sidecar_to_children?.edges[0].node.display_url);
-  
+    
   resultantData.thumbnailURL = instaPageData.thumbnail_src ?? instaPageData.display_url ?? instaPageData.edge_sidecar_to_children?.edges[0].node.display_resources[0].src ?? instaPageData.edge_sidecar_to_children?.edges[0].node.display_url;
 
   return resultantData
@@ -195,20 +193,28 @@ public async getInstagramPostData(inputUrl: string) {
   
     let datr = ''
     let csrf:any = "";
+    const XIGSharedDataIndex = 64;
+    const AnalyticsCoreDataIndex = 60;
     try {
-      csrf = JSON.parse(dataJson['define'][63][2]["raw"]);
+      csrf = JSON.parse(dataJson['define'][XIGSharedDataIndex][2]["raw"]);
       datr = dataJson2['require'][31][3][1]["deferredCookies"]['_js_datr']["value"]
     
     } catch (error) {
       setTimeout(() => {
-        this.getInstagramCookies().then(c => this.instagramCookie = c);
+       // this.getInstagramCookies().then(c => this.instagramCookie = c);
         
       }, 300);
     }
-    csrf = JSON.parse(dataJson['define'][63][2]["raw"]);
+
+    dataJson['define'][XIGSharedDataIndex][2]
     
-    const device_id = dataJson['define'][63][2]["native"]["device_id"]
-    const app_id = dataJson['define'][59][2]["app_id"];
+    dataJson['define'][XIGSharedDataIndex][2]["raw"][0]
+    dataJson['define'][XIGSharedDataIndex][2]["raw"][1]
+    
+    csrf = JSON.parse(dataJson['define'][XIGSharedDataIndex][2]["raw"]);
+    
+    const device_id = dataJson['define'][XIGSharedDataIndex][2]["native"]["device_id"]
+    const app_id = dataJson['define'][AnalyticsCoreDataIndex][2]["app_id"];
     const csrf_token = csrf['config']["csrf_token"];
     
     const headers = this.utility.defaultHeaders;
@@ -247,7 +253,7 @@ public async getInstagramPostData(inputUrl: string) {
   } catch (error) {
       console.log('error creating an instagram cookie? please contact dev if error presists, error: ', error);
       setTimeout(() => {
-        this.getInstagramCookies().then(c => this.instagramCookie = c);
+        //this.getInstagramCookies().then(c => this.instagramCookie = c);
         
       }, 300);
     }      

@@ -34,7 +34,7 @@
   "pkg": {
     "scripts": ["./src/Logic/*.js", "./src/Logic/LogicCategories/*.js", "./src/Logic/LogicCategories/*/*.js", "./src/Logic/LogicCategories/*/*/*.js", "./src/Logic/LogicCategories/*/*/*/*.js"],
     "assets": ["./src/Logic/*.js", "./src/Logic/LogicCategories/*.js", "./src/Logic/LogicCategories/*/*.js", "./src/Logic/LogicCategories/*/*/*.js", "./src/Logic/LogicCategories/*/*/*/*.js"],
-    "targets": [ "latest-linux-x64", "latest-win-x64" ],
+    "targets": [ "latest-linux-x64", "latest-win-x64", "latest-linux-arm64" ],
     "outputPath": "dist"
   },
   "bin": "./index.js"
