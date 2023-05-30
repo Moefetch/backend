@@ -106,28 +106,29 @@ public async processInstagramPost(inputUrl: string, album: string, optionalOverr
  * getInstagramPostData
  */
 public async getInstagramPostData(inputUrl: string) {
-  const SHORTCODE_REGEX = new RegExp(String.raw `www.instagram.com/.*/(?<shortCode>.*)/`)
+  const SHORTCODE_REGEX = new RegExp(String.raw `www.instagram.com\/.*\/(?<shortCode>\w+)`)
   const postShortCode = inputUrl.match(SHORTCODE_REGEX)?.groups
-  if (postShortCode) {
+  
+  if (postShortCode && postShortCode.shortCode) {
     
+
     let headersObj: RequestInit = {
       credentials: "include",
       headers: new Headers({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/112.0",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/113.0",
         "Accept": "*/*",
         "Accept-Language": "en-US,en;q=0.5",
         "X-CSRFToken": this.instagramCookieOBJ.csrf_token,
         "X-IG-App-ID": this.instagramCookieOBJ.app_id,
         "X-ASBD-ID": this.instagramCookieOBJ.ASBD_ID,
         "X-IG-WWW-Claim": "0",
+        "referrer": inputUrl,
+        "Cookie": this.instagramCookie,
         "X-Requested-With": "XMLHttpRequest",
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-origin",
-        "Sec-GPC": "1",
-        "Cookie": this.instagramCookie,
-        "Pragma": "no-cache",
-        "Cache-Control": "no-cache"
+        "Sec-GPC": "1"
       }),
       referrer: inputUrl,
       method: "GET",
@@ -138,14 +139,14 @@ public async getInstagramPostData(inputUrl: string) {
       `https://www.instagram.com/graphql/query/?query_hash=${this.instagramQueryHash}&variables=%7B%22shortcode%22%3A%22${postShortCode.shortCode}%22%2C%22child_comment_count%22%3A3%2C%22fetch_comment_count%22%3A40%2C%22parent_comment_count%22%3A24%2C%22has_threaded_comments%22%3Atrue%7D`,
       "GET",
       {providedHeaders: headersObj}
-    );
-
+    );      
   
     const responseText = await response.text()
     
     try {
-      const dataJson = JSON.parse(responseText)
+      const dataJson = JSON.parse(responseText);
       if (dataJson.status == "ok") {
+        
         return {
           id: dataJson.data.shortcode_media.id,
           shortcode: dataJson.data.shortcode_media.shortcode,
@@ -172,18 +173,26 @@ public async getInstagramPostData(inputUrl: string) {
 
   
   public async getInstagramCookies() {
-    const ASBD_ID = '198387'
+    let ASBD_ID = '129477'
     try {
-      
-    
-
     const response_1 = (await this.utility.request(
       'https://www.instagram.com/',
       "GET"
     ))
     const $ = cheerio.load(await response_1.text())
-    const mainDataFromScript = $($('body').children().toArray()[17]).text()
-    let datrHeaderScriptTextContent = $($('body').children().toArray()[31]).text()
+    const asbdScriptUrl = $($('link[rel="preload"]').toArray()[3]).attr()?.href
+      
+    if (asbdScriptUrl) {
+        const asbdReq = (await this.utility.request(
+          asbdScriptUrl,
+          "GET"
+          ).then(res => res.text()))
+          ASBD_ID = asbdReq.substring(asbdReq.indexOf('__d("BDHeaderConfig",[],(function(a,b,c,d,e,f){"use strict";a="') + 63)
+          ASBD_ID = ASBD_ID.substring(0, ASBD_ID.indexOf('"'))
+        }
+    
+    const mainDataFromScript = $($('body').children().toArray()[17]).text() //starts with requireLazy(["JSScheduler","ServerJS","ScheduledApplyEach"]
+    let datrHeaderScriptTextContent = $($('body').children().toArray()[31]).text() // starts with requireLazy(["HasteSupportData"]
     
     const dataJson = JSON.parse(mainDataFromScript.substring(mainDataFromScript.lastIndexOf("{\"define\":"), mainDataFromScript.indexOf('})') + 1));
     datrHeaderScriptTextContent = datrHeaderScriptTextContent.substring(datrHeaderScriptTextContent.lastIndexOf("{\"define\":"))
@@ -192,12 +201,15 @@ public async getInstagramPostData(inputUrl: string) {
     const dataJson2 = JSON.parse(datrHeaderScriptTextContent);
   
     let datr = ''
-    let csrf:any = "";
-    const XIGSharedDataIndex = 64;
+    let csrfRaw:any = "";
+    //const XIGSharedDataIndex = 64;
     const AnalyticsCoreDataIndex = 60;
+    const datrElement = dataJson2['require'].filter( (a: any) => a[0] == "CometPlatformRootClient")[0]
+    const XIGSharedDataElement = dataJson['define'].filter( (a: any) => a[0] == "XIGSharedData")[0]
     try {
-      csrf = JSON.parse(dataJson['define'][XIGSharedDataIndex][2]["raw"]);
-      datr = dataJson2['require'][31][3][1]["deferredCookies"]['_js_datr']["value"]
+      
+      csrfRaw = JSON.parse(XIGSharedDataElement[2]["raw"]);  
+      datr = datrElement[3][1]["deferredCookies"]['_js_datr']["value"]
     
     } catch (error) {
       setTimeout(() => {
@@ -206,18 +218,13 @@ public async getInstagramPostData(inputUrl: string) {
       }, 300);
     }
 
-    dataJson['define'][XIGSharedDataIndex][2]
+    const device_id = XIGSharedDataElement[2]["native"]["device_id"]
+    const analyticsCoreDataElement = dataJson['define'].filter( (a: any) => a[0] == "AnalyticsCoreData")[0]
     
-    dataJson['define'][XIGSharedDataIndex][2]["raw"][0]
-    dataJson['define'][XIGSharedDataIndex][2]["raw"][1]
+    const app_id = analyticsCoreDataElement[2]["app_id"];
+    const csrf_token = csrfRaw['config']["csrf_token"];
     
-    csrf = JSON.parse(dataJson['define'][XIGSharedDataIndex][2]["raw"]);
-    
-    const device_id = dataJson['define'][XIGSharedDataIndex][2]["native"]["device_id"]
-    const app_id = dataJson['define'][AnalyticsCoreDataIndex][2]["app_id"];
-    const csrf_token = csrf['config']["csrf_token"];
-    
-    const headers = this.utility.defaultHeaders;
+    const headers = new Headers(this.utility.defaultHeaders);
     headers.set("X-CSRFToken", csrf_token);
     headers.set("X-IG-App-ID", app_id);
     headers.set("X-ASBD-ID", ASBD_ID);

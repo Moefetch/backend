@@ -50,6 +50,7 @@ defaultSpecialSettingsOrParams: {[key: string]: any}
 
 compareSpecialSettingsToDefault(settings, "special_params", logic.specialParamsDictionary ?? {})
 compareSpecialSettingsToDefault(settings, "special_settings", logic.specialSettingsDictionary ?? {});
+console.log((settings.database_url.checkBoxValue && settings.database_url.stringValue?.value));
 
 const database = (settings.database_url.checkBoxValue && settings.database_url.stringValue?.value) ? (new MongoDatabaseLogic(settings.database_url.stringValue.value, logic.supportedTypes)) : (new NeDBDatabaseLogic(logic.supportedTypes)) ;
 database.updateCountEntriesInAllAlbums()
@@ -263,7 +264,7 @@ router.post(
       else {
         errorsObject.hasError = true;
         responseSettings.database_url.errorMessage = "Unable to connect to database";}
-    }
+    } else settings.database_url.checkBoxValue = false;
     
       settings.stock_settings = responseSettings.stock_settings;
       const arrayLength = logic.specialSettingValidityCheck.length
