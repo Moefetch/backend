@@ -405,7 +405,12 @@ export interface IInstagramQueryResponse {
                 text: string;
             };
         }[];
-    }
+    };
+    display_resources: {
+        src: string;
+        config_width : number;
+        config_height : number;
+    }[];
     thumbnail_src?: string;
     display_url?: string;
 

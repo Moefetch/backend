@@ -46,58 +46,73 @@ public async processInstagramPost(inputUrl: string, album: string, optionalOverr
   const instaPageData = await this.getInstagramPostData(inputUrl);
   if (instaPageData) {
     let resultantData: INewPicture = {
-    data: {},
-    isNSFW: false,
-    indexer: 0,
-    tags: [],
-    imagesDataArray: []
-  };
-  //here im attempting to differenciate between single imape/video post and mutli image posts, bigger sample size needed to test  
-  if (instaPageData.edge_sidecar_to_children) resultantData.urlsArray = instaPageData.edge_sidecar_to_children.edges.map(edge => ({
-    imageUrl: edge.node.video_url ?? edge.node.display_resources[edge.node.display_resources.length - 1].src,
-    isVideo: edge.node.is_video,
-    height: edge.node.display_resources[edge.node.display_resources.length - 1].config_height,
-    width: edge.node.display_resources[edge.node.display_resources.length - 1].config_width,
-    thumbnailUrl: edge.node?.display_resources[0]?.src ?? edge.node.display_url,
-  }))
-  const instaURL_REGEX = new RegExp(String.raw `/.*/(?<fileName>.*)\.(?<fileExtension>.*)\?`)
+      data: {},
+      isNSFW: false,
+      indexer: 0,
+      tags: [],
+      imagesDataArray: []
+    };
 
-  let providedFileNames: string[] | undefined = [];
-  let providedFileExtensions: string[] | undefined = [];
-
-  resultantData.urlsArray?.map((url, i) => {
-    const regexRes = url.imageUrl.match(instaURL_REGEX)?.groups
-    if (regexRes && providedFileExtensions && providedFileNames) {
-      providedFileExtensions[i] = regexRes.fileExtension;
-      providedFileNames[i] = regexRes.fileName;
+    //for multi image posts and/or video 
+    if (instaPageData.edge_sidecar_to_children) {
+      resultantData.urlsArray = instaPageData.edge_sidecar_to_children.edges.map(edge => ({
+        imageUrl: edge.node.video_url ?? edge.node.display_resources[edge.node.display_resources.length - 1].src,
+        isVideo: edge.node.is_video,
+        height: edge.node.display_resources[edge.node.display_resources.length - 1].config_height,
+        width: edge.node.display_resources[edge.node.display_resources.length - 1].config_width,
+        thumbnailUrl: edge.node?.display_resources[0]?.src ?? edge.node.display_url,
+      }))
+  }
+    //for video
+    else if (instaPageData.is_video && instaPageData.video_url) {
+      resultantData.urlsArray = [ {
+        imageUrl: instaPageData.video_url,
+        isVideo: true,
+        thumbnailUrl: instaPageData.thumbnail_src ?? instaPageData.display_url ?? instaPageData.video_url,
+        height: instaPageData.dimensions.height,
+        width: instaPageData.dimensions.width,
+      }]
     }
-  })
-  if (!providedFileNames.length) providedFileNames = undefined;
-  if (!providedFileExtensions.length) providedFileExtensions = undefined;
-  const res = await this.utility.downloadAndGetFilePaths(resultantData, 
-    album, 
-    this.settings.downloadFolder, 
-    {providedFileNames: stockOptionalOverrides.useProvidedFileName.stringValue?.value.split('\n') ?? providedFileNames,
-  providedFileExtensions: providedFileExtensions})
-  if ( res ) resultantData.imagesDataArray = res;
-
-  else if (instaPageData.is_video && instaPageData.video_url) resultantData.urlsArray = [ {
-    imageUrl: instaPageData.video_url,
-    isVideo: true,
-    thumbnailUrl: instaPageData.thumbnail_src ?? instaPageData.display_url ?? instaPageData.video_url,
-    height: instaPageData.dimensions.height,
-    width: instaPageData.dimensions.width,
-  }]
-
-  resultantData.data.instagram = instaPageData
-  resultantData.links = {instagram: inputUrl}
-  resultantData.storedResult = 'instagram'
-  resultantData.artists = [instaPageData.owner.username]
-  resultantData.ids = {instagram: instaPageData.shortcode};
+    // for single image posts
+    else if (instaPageData.display_resources) {
+      const element = instaPageData.display_resources[instaPageData.display_resources.length - 1]
+      resultantData.urlsArray = [{
+        imageUrl: element.src,
+        isVideo: !!instaPageData.is_video,
+        height: element.config_height,
+        width: element.config_width,
+        thumbnailUrl: instaPageData.display_resources[0].src
+      }]
+    }
     
-  resultantData.thumbnailURL = instaPageData.thumbnail_src ?? instaPageData.display_url ?? instaPageData.edge_sidecar_to_children?.edges[0].node.display_resources[0].src ?? instaPageData.edge_sidecar_to_children?.edges[0].node.display_url;
+    const instaURL_REGEX = new RegExp(String.raw `\/.*\/(?<fileName>.*)\.(?<fileExtension>.*)\?`)
 
-  return resultantData
+    let providedFileNames: string[] = [];
+    let providedFileExtensions: string[] = [];
+
+    resultantData.urlsArray?.map((url, i) => {
+      const regexRes = url.imageUrl.match(instaURL_REGEX)?.groups
+      if (regexRes && providedFileExtensions && providedFileNames) {
+        providedFileExtensions[i] = regexRes.fileExtension;
+        providedFileNames[i] = regexRes.fileName;
+      }
+    })
+    const res = await this.utility.downloadAndGetFilePaths(resultantData, 
+      album, 
+      this.settings.downloadFolder, 
+      {providedFileNames: stockOptionalOverrides.useProvidedFileName.stringValue?.value.split('\n') ?? providedFileNames,
+    providedFileExtensions: providedFileExtensions})
+    if ( res ) resultantData.imagesDataArray = res;
+
+    resultantData.data.instagram = instaPageData
+    resultantData.links = {instagram: inputUrl}
+    resultantData.storedResult = 'instagram'
+    resultantData.artists = [instaPageData.owner.username]
+    resultantData.ids = {instagram: instaPageData.shortcode};
+      
+    resultantData.thumbnailURL = instaPageData.thumbnail_src ?? instaPageData.display_url ?? instaPageData.edge_sidecar_to_children?.edges[0].node.display_resources[0].src ?? instaPageData.edge_sidecar_to_children?.edges[0].node.display_url;
+    
+    return resultantData
   }
   else return { data: {}, indexer: 0, imagesDataArray: []}
 }
@@ -145,8 +160,7 @@ public async getInstagramPostData(inputUrl: string) {
     
     try {
       const dataJson = JSON.parse(responseText);
-      if (dataJson.status == "ok") {
-        
+      if (dataJson.status == "ok") {    
         return {
           id: dataJson.data.shortcode_media.id,
           shortcode: dataJson.data.shortcode_media.shortcode,
@@ -156,9 +170,13 @@ public async getInstagramPostData(inputUrl: string) {
           dimensions: dataJson.data.shortcode_media.dimensions,
           edge_sidecar_to_children: dataJson.data.shortcode_media.edge_sidecar_to_children,
           owner: dataJson.data.shortcode_media.owner,
+          display_resources: dataJson.data.shortcode_media.display_resources,
           edge_media_to_caption: dataJson.data.shortcode_media.edge_media_to_caption,
         } as IInstagramQueryResponse
         //console.log(responseText);
+      } else {
+        console.log("instagram post errored with status: ", dataJson.status);
+        
       }
       
     } catch (error) {

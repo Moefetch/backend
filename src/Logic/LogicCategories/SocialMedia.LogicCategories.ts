@@ -36,6 +36,7 @@ export class CategoryLogic implements ILogicCategory {
         };
         if (typeof input == "string"){
           resultantData = await this.processUrl(input, album, optionalOverrideParams, stockOptionalOverrides);
+          
         }
         else {
           resultantData = {data: {}, indexer: 0, imagesDataArray: []} //no reverese image searvh for social media no?
