@@ -222,8 +222,9 @@ export default class Utility {
     optional?: {
       providedFileNames?: string[];
       providedFileExtensions?: string[];
+      providedThumbnailFileExtensions?: string[]
     }
-  ) {
+  ) {    
     let result: INewPicture["imagesDataArray"] = [];
     let providedRequestObj: RequestInit | undefined = undefined;
     const urlsArray = resultantData.urlsArray;
@@ -258,11 +259,11 @@ export default class Utility {
           );
         } catch (error) {
           console.log('error downloading ',  element.imageUrl, 'error is ', error);
-          
         }
         if (filePath) {
           let fileThumbnailPath: string;
           if (element.thumbnailUrl) {
+            const thumbnailFileExtensionFromProvided = (optional?.providedThumbnailFileExtensions && optional?.providedThumbnailFileExtensions[index])
             const thumbnailFileNameFromProvided = (optional?.providedFileNames && optional?.providedFileNames[index])
             ? `thumbnail - ${optional?.providedFileNames[index]}`
             : `thumbnail - ${resultantData.storedResult ?? ""} - ${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]} - ${index} - ${Date.now()}`
@@ -273,6 +274,7 @@ export default class Utility {
               `/saved_pictures_thumbnails/${album}`,
               {
                 providedFileName: thumbnailFileNameFromProvided,
+                providedFileExtension: thumbnailFileExtensionFromProvided,
                 providedHeaders: providedRequestObj,
               }
               );
@@ -333,13 +335,13 @@ export default class Utility {
   ) {
     let returnPath: string | undefined = "";
 
-    const fileExtension = options?.providedFileExtension ?? url.substring(url.lastIndexOf("."));
+    const fileExtension = options?.providedFileExtension ?? url.substring(url.lastIndexOf(".") + 1);
     const fileName =
-      options?.providedFileName && options?.providedFileName != ""
+      (!!options?.providedFileName)
         ? options?.providedFileName
-        : url.substring(url.lastIndexOf("/"), url.lastIndexOf("."));
+        : url.substring(url.lastIndexOf("/") + 1 , url.lastIndexOf("."));
 
-    returnPath = `${downloadPath + "/" + fileName + fileExtension}`;
+    returnPath = `${downloadPath + "/" + fileName + '.' + fileExtension}`;
 
     await this.request(url, "GET", {
       providedHeaders: options?.providedHeaders,
@@ -352,7 +354,7 @@ export default class Utility {
         this.checkDirectoryAndCreate(downloadFolder + downloadPath);
         fs.promises
           .writeFile(
-            downloadFolder + downloadPath + "/" + fileName + fileExtension,
+            downloadFolder + downloadPath + "/" + fileName + "." + fileExtension,
             buffer
           )
           .catch((error) => {

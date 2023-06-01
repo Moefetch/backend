@@ -26,7 +26,7 @@ export class Logic {
 
         if (resultantData && resultantData.urlsArray?.length) {
 
-            if (!resultantData.imagesDataArray.length) { //form now on i can download and store results within categories/models
+            if (!resultantData.imagesDataArray.length) {  
                 const res = await this.utility.downloadAndGetFilePaths(resultantData, album, this.settings.downloadFolder, {providedFileNames: stockOptionalOverrides.useProvidedFileName.stringValue?.value.split('\n')})
                 if ( res ) resultantData.imagesDataArray = res
             }

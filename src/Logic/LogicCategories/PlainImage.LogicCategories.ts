@@ -16,7 +16,7 @@ export class CategoryLogic implements ILogicCategory {
           
           if (typeof input == "string"){
             if( await this.utility.checkImageUrlValid(input)) {
-                resultantData = await this.processUrl(input, optionalOverrideParams);
+                resultantData = await this.processUrl(input, album, optionalOverrideParams, stockOptionalOverrides);
             } else return undefined
           }
           else {
@@ -25,10 +25,11 @@ export class CategoryLogic implements ILogicCategory {
         return resultantData;
     }
 
-    private async processUrl(url: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary)  {
+    private async processUrl(url: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides)  {
         const imageProps = await this.utility.getImageResolution(url)
         let resultantData: INewPicture | undefined = {
             data: {},
+            storedResult: "plain",
             indexer: 0,
             isNSFW: false,
             imagesDataArray: [],
@@ -39,8 +40,24 @@ export class CategoryLogic implements ILogicCategory {
                 height: imageProps?.imageSize.height || 0, 
                 width: imageProps?.imageSize.width || 0 
             }],
-
           };
+          const parse_regex = new RegExp(String.raw `\/.*\/(?<fileName>.*)\.(?<fileExtension>.*)`)
+          const parseResult = url.match(parse_regex)?.groups
+          const providedFileName = (parseResult?.fileName ?? url.substring(url.lastIndexOf('/') + 1, url.indexOf('.'))) + `- ${Date.now()}`
+          const providedFileExtension = parseResult?.fileExtension ?? url.substring(url.indexOf('.') + 1)
+          const path = await this.utility.downloadFromUrl(url, this.settings.downloadFolder, `/saved_pictures/${album}`, {
+            providedFileName: providedFileName, providedFileExtension: providedFileExtension
+          })
+          resultantData.imagesDataArray = [{
+            file: path, 
+            isVideo: false, 
+            imageSize: {
+              height: imageProps?.imageSize.height || 0, 
+              width: imageProps?.imageSize.width || 0
+            },
+            thumbnail_file: path,
+          }]
+          resultantData.thumbnailFile = path;
         return resultantData
 
     }

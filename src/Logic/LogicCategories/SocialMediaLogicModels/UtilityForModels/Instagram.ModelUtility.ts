@@ -89,19 +89,31 @@ public async processInstagramPost(inputUrl: string, album: string, optionalOverr
 
     let providedFileNames: string[] = [];
     let providedFileExtensions: string[] = [];
+    let providedThumbnailFileExtensions: string[] = [];
 
     resultantData.urlsArray?.map((url, i) => {
-      const regexRes = url.imageUrl.match(instaURL_REGEX)?.groups
+      const regexRes = url.imageUrl.match(instaURL_REGEX)?.groups;
+      const regResThumbnail = url.thumbnailUrl.match(instaURL_REGEX)?.groups
       if (regexRes && providedFileExtensions && providedFileNames) {
         providedFileExtensions[i] = regexRes.fileExtension;
         providedFileNames[i] = regexRes.fileName;
+        if (regResThumbnail) providedThumbnailFileExtensions[i] = regResThumbnail.fileExtension
       }
     })
+    let providedFileNameFromOptions =  stockOptionalOverrides.useProvidedFileName.stringValue?.value.split('\n')
+
+    providedFileNameFromOptions = (providedFileNameFromOptions && providedFileNameFromOptions[0] == '' && providedFileNameFromOptions.length == 1) ? undefined : providedFileNameFromOptions;
+    
+    
+    
     const res = await this.utility.downloadAndGetFilePaths(resultantData, 
       album, 
       this.settings.downloadFolder, 
-      {providedFileNames: stockOptionalOverrides.useProvidedFileName.stringValue?.value.split('\n') ?? providedFileNames,
-    providedFileExtensions: providedFileExtensions})
+      {
+        providedFileNames: providedFileNameFromOptions ?? providedFileNames,
+        providedThumbnailFileExtensions: providedThumbnailFileExtensions,
+        providedFileExtensions: providedFileExtensions
+      })
     if ( res ) resultantData.imagesDataArray = res;
 
     resultantData.data.instagram = instaPageData
@@ -173,7 +185,6 @@ public async getInstagramPostData(inputUrl: string) {
           display_resources: dataJson.data.shortcode_media.display_resources,
           edge_media_to_caption: dataJson.data.shortcode_media.edge_media_to_caption,
         } as IInstagramQueryResponse
-        //console.log(responseText);
       } else {
         console.log("instagram post errored with status: ", dataJson.status);
         
