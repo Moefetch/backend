@@ -72,12 +72,4 @@ export class Logic {
         return categoryDictionary
     }
 
-    
-/**
- * checkSauceNaoAPI
- */
-static checkSauceNaoApi(input: string) {
-    return true;
-  }
-  
 }
