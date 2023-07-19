@@ -12,11 +12,12 @@ console.log('Settings: ', settings);
 
 
 if (!utility.checkDirectory(`${settings.downloadFolder}/album_thumbnail_files/`)) {
-  utility.downloadFromUrl(
+  utility.saveBlankThumbnail(`${settings.downloadFolder}/album_thumbnail_files/image.svg`)
+  /* utility.downloadFromUrl(
     "https://raw.githubusercontent.com/Moefetch/backend/33a32fb43464e006eb84c43202b8350d68136e75/image.svg",
     settings.downloadFolder,
     `/album_thumbnail_files/`,{providedFileName: 'image'}
-  );
+  ); */
 }
 class backendServer {
   public express: Express;

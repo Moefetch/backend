@@ -37,7 +37,7 @@ class Settings implements ISetting {
     public special_params: ILogicSpecialParamsDictionary;
 
     constructor(){
-        !fs.existsSync("./settings.json") && this.save()
+        !fs.existsSync(process.env.baseDir || '.' + "/settings.json") && this.save()
         const { port, 
             ip, 
             hostname, 
@@ -47,7 +47,7 @@ class Settings implements ISetting {
             stock_settings,
             special_settings,
             special_params } = JSON.parse(
-            fs.readFileSync("./settings.json", { encoding: "utf-8" })
+            fs.readFileSync(process.env.baseDir || '.' + "/settings.json", { encoding: "utf-8" })
         ) as ISetting;
         this.ip = !!ip ? ip : "";
         this.initialSetup = initialSetup ?? false;
@@ -97,7 +97,7 @@ class Settings implements ISetting {
      * save 
      */
     public save() {
-        fs.writeFileSync("./settings.json", JSON.stringify(this, null, 2));
+        fs.writeFileSync(process.env.baseDir || '.' + "/settings.json", JSON.stringify(this, null, 2));
         
     }
 

@@ -58,7 +58,7 @@ database.updateCountEntriesInAllAlbums()
 const router = express.Router();
 
 function saveSettings() {
-  fs.writeFileSync("./settings.json", JSON.stringify(settings, null, 2));
+  fs.writeFileSync(process.env.baseDir || '.' + "/settings.json", JSON.stringify(settings, null, 2));
   console.log('New settings: ', settings);
   logic = new Logic(settings);
 }

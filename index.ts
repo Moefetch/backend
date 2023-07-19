@@ -1,3 +1,14 @@
+//process.env.DEV = "true";
+process.env.EXTENSION = process.env.DEV ? ".ts" : ".js";
+process.env.__dirname = process.cwd();
+
+import Utility from "./src/Utility";
+import path from "path";
+const utility = new Utility()
+
+process.env.__dirname && utility.checkDirectoryAndCreate( path.join (process.env.__dirname, "plugins"))
+process.env.__dirname && utility.checkDirectoryAndCreate( path.join (process.env.__dirname, "plugins", "databases"))
+
 
 import './settings';
 import './server';

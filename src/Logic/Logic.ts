@@ -55,7 +55,7 @@ export class Logic {
         const settingsDictionary: ILogicSpecialSettingsDictionary = {}
         const paramsDictionary: ILogicSpecialParamsDictionary = {}
 
-        const logicCategories = fs.readdirSync('./src/Logic/LogicCategories/').filter(file => file.endsWith('.ts') || file.endsWith('.js'))
+        const logicCategories = fs.readdirSync('./src/Logic/LogicCategories/').filter(file => file.endsWith(process.env.EXTENSION ?? "js"))
         
         logicCategories.forEach(category => {
             const Category = require(`./LogicCategories/${category.substring(0, category.lastIndexOf('.'))}`);
