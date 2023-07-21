@@ -267,21 +267,23 @@ router.post(
     } else settings.database_url.checkBoxValue = false;
     
       settings.stock_settings = responseSettings.stock_settings;
-      const arrayLength = logic.specialSettingValidityCheck.length
-      const validityCheckLoop = new Promise(async (resolve, reject) => {
-        logic.specialSettingValidityCheck.forEach(async (checkFunc, index) => {
-          const param = recursiveObjectIndex<IParam>(errorsObject.responseSettings, checkFunc.indexer);
-          if (param) {
-            param.errorMessage = await checkFunc.checkValid(param.checkBoxValue, param.stringValue?.value);
-            errorsObject.hasError = errorsObject.hasError || !!param.errorMessage
-            
-          }
-          if ((index + 1) == arrayLength) {
-            resolve(true)
-          }
+      const arrayLength = logic.specialSettingValidityCheck.length;
+      if ((settings.special_params && errorsObject.responseSettings.special_params) && (settings.special_settings && errorsObject.responseSettings.special_settings)) {
+        const validityCheckLoop = new Promise(async (resolve, reject) => {
+          logic.specialSettingValidityCheck.forEach(async (checkFunc, index) => {
+            const param = recursiveObjectIndex<IParam>(errorsObject.responseSettings, checkFunc.indexer);
+            if (param) {
+              param.errorMessage = await checkFunc.checkValid(param.checkBoxValue, param.stringValue?.value);
+              errorsObject.hasError = errorsObject.hasError || !!param.errorMessage
+              
+            }
+            if ((index + 1) == arrayLength) {
+              resolve(true)
+            }
+          })
         })
-      })
-      await validityCheckLoop;
+        await validityCheckLoop;
+      }
 
     if (!errorsObject.hasError) {
       settings.special_params = special_params;
