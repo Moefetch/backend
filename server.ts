@@ -11,7 +11,7 @@ const utility = new Utility();
 console.log('Settings: ', settings);
 
 
-if (!utility.checkDirectory(`${settings.downloadFolder}/album_thumbnail_files/`)) {
+if (!utility.checkDirectoryAndCreate(`${settings.downloadFolder}/album_thumbnail_files/`)) {
   utility.saveBlankThumbnail(`${settings.downloadFolder}/album_thumbnail_files/image.svg`)
   /* utility.downloadFromUrl(
     "https://raw.githubusercontent.com/Moefetch/backend/33a32fb43464e006eb84c43202b8350d68136e75/image.svg",
