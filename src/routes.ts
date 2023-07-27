@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import express from "express";
-import { AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, INewPicture, IParam, IPicFormStockOverrides } from "types";
+import { AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, INewPicture, IParam, IPicFormStockOverrides, ISettings } from "types";
 import fs from "fs";
 import MongoDatabaseLogic from "./mongoDatabaseLogic";
 import {Logic} from "./Logic/Logic"
@@ -10,12 +10,13 @@ import { upload } from "../middlewares/upload";
 import { isDeepStrictEqual } from "util";
 let logic = new Logic(settings);
 
+/* 
 function compareSpecialSettingsToDefault(initialSettings: typeof settings, divisionType: "special_settings" | "special_params", 
 defaultSpecialSettingsOrParams: {[key: string]: any}
 ) { //the flow is get settings from default and if they dont exuist in settings object add (the else part is adding)
 
   let internalSettingVar = (JSON.parse(JSON.stringify({...initialSettings})));
-  if (!internalSettingVar[divisionType] || internalSettingVar[divisionType] == {}) {
+  if (!internalSettingVar[divisionType] || !Object.getOwnPropertyNames(internalSettingVar[divisionType]).length) {
     internalSettingVar[divisionType] = defaultSpecialSettingsOrParams;
     return internalSettingVar
   }
@@ -47,19 +48,42 @@ defaultSpecialSettingsOrParams: {[key: string]: any}
   }
   return internalSettingVar as typeof initialSettings
 }
+ */
+
+function compareSpecialSettingsToDefault(
+  initialSettings: typeof settings, 
+  divisionType: "special_settings" | "special_params", 
+  defaultSpecialSettingsOrParams: {[key: string]: IParam}
+  ){
+  //the goal is get settings from default and if they dont exuist in settings object add (the else part is adding)
+
+  let internalSettingVar = (JSON.parse(JSON.stringify({...initialSettings}))) as typeof initialSettings;
+  if (!internalSettingVar[divisionType] || !Object.getOwnPropertyNames(internalSettingVar[divisionType]).length) {
+    initialSettings[divisionType] = defaultSpecialSettingsOrParams;
+
+    return internalSettingVar
+  }
+  
+for (const param in defaultSpecialSettingsOrParams) {
+  if (Object.prototype.hasOwnProperty.call(defaultSpecialSettingsOrParams, param)) {
+    if (!internalSettingVar[divisionType][param]) initialSettings[divisionType][param] = defaultSpecialSettingsOrParams[param];
+  }
+}
+  return internalSettingVar as typeof initialSettings
+}
+
 
 compareSpecialSettingsToDefault(settings, "special_params", logic.specialParamsDictionary ?? {})
 compareSpecialSettingsToDefault(settings, "special_settings", logic.specialSettingsDictionary ?? {});
-console.log((settings.database_url.checkBoxValue && settings.database_url.stringValue?.value));
+saveSettings()
 
-const database = (settings.database_url.checkBoxValue && settings.database_url.stringValue?.value) ? (new MongoDatabaseLogic(settings.database_url.stringValue.value, logic.supportedTypes)) : (new NeDBDatabaseLogic(logic.supportedTypes)) ;
+const database = (settings.database_url.checkBox?.checkBoxValue && settings.database_url.textField?.value) ? (new MongoDatabaseLogic(settings.database_url.textField.value, logic.supportedTypes)) : (new NeDBDatabaseLogic(logic.supportedTypes)) ;
 database.updateCountEntriesInAllAlbums()
  
 const router = express.Router();
 
 function saveSettings() {
   fs.writeFileSync(process.env.baseDir || '.' + "/settings.json", JSON.stringify(settings, null, 2));
-  console.log('New settings: ', settings);
   logic = new Logic(settings);
 }
 
@@ -137,9 +161,9 @@ router.post(
       for (let i = 0; i < urlsArray.length; i++) {
         const value = urlsArray[i];
        setTimeout(() => {}, 10); //just wait a bit
-       if (stockOptionalOverridesPerEntry.addId.stringValue && addidsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addId.stringValue.value = addidsArrayPerEntry[ (i > addidsArrayPerEntry.length) ? (addidsArrayPerEntry.length - 1) : i];
-       if (stockOptionalOverridesPerEntry.addTags.stringValue && addTagsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addTags.stringValue.value = addTagsArrayPerEntry[ (i > addTagsArrayPerEntry.length) ? (addTagsArrayPerEntry.length - 1) : i];
-       if (stockOptionalOverridesPerEntry.useProvidedFileName.stringValue && providedFileNamePerEntry?.length) stockOptionalOverridesPerEntry.useProvidedFileName.stringValue.value = providedFileNamePerEntry[ (i > providedFileNamePerEntry.length) ? (providedFileNamePerEntry.length - 1) : i];
+       if (stockOptionalOverridesPerEntry.addId.textField && addidsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addId.textField.value = addidsArrayPerEntry[ (i > addidsArrayPerEntry.length) ? (addidsArrayPerEntry.length - 1) : i];
+       if (stockOptionalOverridesPerEntry.addTags.textField && addTagsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addTags.textField.value = addTagsArrayPerEntry[ (i > addTagsArrayPerEntry.length) ? (addTagsArrayPerEntry.length - 1) : i];
+       if (stockOptionalOverridesPerEntry.useProvidedFileName.textField && providedFileNamePerEntry?.length) stockOptionalOverridesPerEntry.useProvidedFileName.textField.value = providedFileNamePerEntry[ (i > providedFileNamePerEntry.length) ? (providedFileNamePerEntry.length - 1) : i];
 
         const entry = await logic.ProcessInput(value, type, album, optionalOverrideParams, stockOptionalOverridesPerEntry);
         console.log(`${i} / ${urlsArray.length}`);
@@ -147,8 +171,8 @@ router.post(
         if (entry && entry.imagesDataArray?.length) {
           hasVideo = !!entry.imagesDataArray.filter(fl => fl.isVideo).length
 
-          if (stockOptionalOverridesPerEntry.addTags.stringValue?.value) {
-            entry.tags = entry.tags ? [...entry.tags, ...(stockOptionalOverridesPerEntry.addTags.stringValue.value as any).replaceAll(' ', "").split(',')] : (stockOptionalOverridesPerEntry.addTags.stringValue.value as any).replaceAll(' ', "").split(',');
+          if (stockOptionalOverridesPerEntry.addTags.textField?.value) {
+            entry.tags = entry.tags ? [...entry.tags, ...(stockOptionalOverridesPerEntry.addTags.textField.value as any).replaceAll(' ', "").split(',')] : (stockOptionalOverridesPerEntry.addTags.textField.value as any).replaceAll(' ', "").split(',');
           }
 
           if (stockOptionalOverrides.compileAllLinksIntoOneEntry.checkBoxValue) {
@@ -229,7 +253,7 @@ router.post(
 
   router.get("/albums", async (req, res) => {
     
-    const albums = await database.getAlbums(settings.stock_settings.show_hidden.checkBoxValue)
+    const albums = await database.getAlbums(!!settings.stock_settings.show_hidden.checkBox?.checkBoxValue)
     return res.status(200).json(albums);
   });
 
@@ -242,7 +266,12 @@ router.post(
       } = req.body;
 
 
-      const responseSettings = {
+      const responseSettings: {
+        database_url: IParam;
+        stock_settings: ISettings['stock_settings'];
+        special_settings: ISettings['special_settings'];
+        special_params: ISettings['special_params'];
+      } = {
         database_url,
         stock_settings,
         special_settings,
@@ -255,16 +284,17 @@ router.post(
       responseSettings: responseSettings,
     }  
     
-    if (responseSettings.database_url.checkBoxValue) {
-      const canConnect = await MongoDatabaseLogic.testMongoDBConnection(responseSettings.database_url.stringValue.value);
+    if (responseSettings.database_url.checkBox?.checkBoxValue && responseSettings.database_url.textField?.value) {
+      const canConnect = await MongoDatabaseLogic.testMongoDBConnection(responseSettings.database_url.textField?.value);
       if (canConnect) {  
         settings.database_url = responseSettings.database_url;
         responseSettings.database_url.errorMessage = "";
       }
       else {
         errorsObject.hasError = true;
-        responseSettings.database_url.errorMessage = "Unable to connect to database";}
-    } else settings.database_url.checkBoxValue = false;
+        responseSettings.database_url.errorMessage = "Unable to connect to database"
+      }
+    } else settings.database_url.checkBox = {checkBoxValue: false, defaultValue: false, checkBoxDescription: ""}
     
       settings.stock_settings = responseSettings.stock_settings;
       const arrayLength = logic.specialSettingValidityCheck.length;
@@ -273,7 +303,7 @@ router.post(
           logic.specialSettingValidityCheck.forEach(async (checkFunc, index) => {
             const param = recursiveObjectIndex<IParam>(errorsObject.responseSettings, checkFunc.indexer);
             if (param) {
-              param.errorMessage = await checkFunc.checkValid(param.checkBoxValue, param.stringValue?.value);
+              param.errorMessage = await checkFunc.checkValid(!!param.checkBox?.checkBoxValue, param.textField?.value);
               errorsObject.hasError = errorsObject.hasError || !!param.errorMessage
               
             }

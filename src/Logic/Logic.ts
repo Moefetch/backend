@@ -1,12 +1,12 @@
 import fs from "fs";
-import { ICategoryDictionary, ILogicCategory, ILogicCategorySpecialParamsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, IParam, IParamValidityCheck, IPicFormStockOverrides, ISettings } from "types";
+import { ICategoryDictionary, ILogicCategory, ILogicCategorySpecialParamsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, IModelSpecialParam, IParam, IParamValidityCheck, IPicFormStockOverrides, ISettings } from "types";
 import settings from "../../settings";
 import Utility from "../Utility";
 export class Logic {
     public settings: ISettings;
     public categoryDictionary: ICategoryDictionary;
-    public specialSettingsDictionary?: ILogicSpecialSettingsDictionary
-    public specialParamsDictionary?: ILogicSpecialParamsDictionary;
+    public specialSettingsDictionary?: IModelSpecialParam
+    public specialParamsDictionary?: IModelSpecialParam;
     public specialSettingValidityCheck: IParamValidityCheck[] = [];
     public supportedTypes: string[];
     public utility: Utility;
@@ -27,7 +27,7 @@ export class Logic {
         if (resultantData && resultantData.urlsArray?.length) {
 
             if (!resultantData.imagesDataArray.length) {  
-                const res = await this.utility.downloadAndGetFilePaths(resultantData, album, this.settings.downloadFolder, {providedFileNames: stockOptionalOverrides.useProvidedFileName.stringValue?.value.split('\n')})
+                const res = await this.utility.downloadAndGetFilePaths(resultantData, album, this.settings.downloadFolder, {providedFileNames: stockOptionalOverrides.useProvidedFileName.textField?.value.split('\n')})
                 if ( res ) resultantData.imagesDataArray = res
             }
             if (resultantData.imagesDataArray.length == 1) {
@@ -52,8 +52,8 @@ export class Logic {
 
     private loadCategoryClasses() {
         const categoryDictionary:ICategoryDictionary = {};
-        const settingsDictionary: ILogicSpecialSettingsDictionary = {}
-        const paramsDictionary: ILogicSpecialParamsDictionary = {}
+        const settingsDictionary: IModelSpecialParam = {}
+        const paramsDictionary: IModelSpecialParam = {}
 
         const logicCategories = fs.readdirSync('./src/Logic/LogicCategories/').filter(file => file.endsWith(process.env.EXTENSION ?? "js"))
         
@@ -61,8 +61,8 @@ export class Logic {
             const Category = require(`./LogicCategories/${category.substring(0, category.lastIndexOf('.'))}`);
             const categoryInstence:ILogicCategory = new Category.CategoryLogic(this.settings, this.utility)
             
-            categoryInstence.specialSettingsDictionary ? (settingsDictionary[categoryInstence.logicCategory] = categoryInstence.specialSettingsDictionary) : {};
-            categoryInstence.specialParamsDictionary ? (paramsDictionary[categoryInstence.logicCategory] = categoryInstence.specialParamsDictionary) : {};
+            categoryInstence.specialSettingsDictionary ? (Object.assign(settingsDictionary, categoryInstence.specialSettingsDictionary)) : {};
+            categoryInstence.specialParamsDictionary ? (Object.assign(paramsDictionary, categoryInstence.specialParamsDictionary)) : {};
             categoryInstence.specialSettingValidityCheck ? (this.specialSettingValidityCheck = [...this.specialSettingValidityCheck, ...categoryInstence.specialSettingValidityCheck]) : ({})
             categoryDictionary[categoryInstence.logicCategory] = categoryInstence.ProcessInput;
         })

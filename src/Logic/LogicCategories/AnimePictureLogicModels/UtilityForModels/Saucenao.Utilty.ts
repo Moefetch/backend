@@ -14,12 +14,17 @@ export class sauceNao {
 
   static specialSettingsParam:IModelSpecialParam = {
     "saucenao_api_key" : {
-      containsString: true,
-      checkBoxValue: false,
-      checkBoxDescription: "Use SauceNao to search different sites for possibly higher quality ",
-      stringValue: {
+      type:"setting",
+      valueType: "both",
+      checkBox: {
+        checkBoxValue: false,
+        checkBoxDescription: "Use SauceNao to search different sites for possibly higher quality ",
+        defaultValue: false,
+      },
+      textField: {
         value: "",
-        stringPlaceholder: "Saucenao API key (for the option above)"
+        fieldPlaceholder: "Saucenao API key (for the option above)",
+        defaultValue: "",
       }
     }
   }

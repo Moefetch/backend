@@ -1,6 +1,7 @@
-//process.env.DEV = "true";
+process.env.DEV = "true";
 process.env.EXTENSION = process.env.DEV ? ".ts" : ".js";
 process.env.__dirname = process.cwd();
+
 
 import Utility from "./src/Utility";
 import path from "path";

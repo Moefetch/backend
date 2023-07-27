@@ -16,7 +16,7 @@ export default class LogicModel implements ILogicModel {
         return this.InstagramModelUtility.processInstagramPost(inputUrl, album, optionalOverrideParams, stockOptionalOverrides)
     }
     
-    public specialNewEntryParam: IModelSpecialParam = {}; 
-    public specialSettingsParam: IModelSpecialParam = {};  
+    public newEntryParams: IModelSpecialParam = {}; 
+    public specialSettings: IModelSpecialParam = {};  
 
 }

@@ -7,13 +7,13 @@ const utility = new Utility();
 export default class LogicModel implements ILogicModel {
     public supportedHostName: string = "www.pixiv.net";
     private settings: ISettings
-    public specialSettingsParam:IModelSpecialParam;
+    public specialSettings:IModelSpecialParam;
     public pixivModelUtility: PixivModelUtility;
     constructor(settings: ISettings) {
         this.settings = settings;
         this.pixivModelUtility = new PixivModelUtility(this.settings, utility)
         this.process = this.process.bind(this)
-        this.specialSettingsParam = this.pixivModelUtility.specialSettingsParam
+        this.specialSettings = this.pixivModelUtility.specialSettingsParam
     }
     
     public async process(url: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides):Promise<INewAnimePic> {
@@ -21,17 +21,23 @@ export default class LogicModel implements ILogicModel {
             url.lastIndexOf(
                 url.includes('illust_id=') ? '=' : '/'
             ) + 1);
-          const dlFirstOnly = (optionalOverrideParams && optionalOverrideParams.specialHostnameSpecificParams) ? optionalOverrideParams.specialHostnameSpecificParams["www.pixiv.net"]["pixiv_download_first_image_only"].checkBoxValue : this.specialNewEntryParam['pixiv_download_first_image_only'].checkBoxValue
+          const dlFirstOnly = (optionalOverrideParams && optionalOverrideParams.specialHostnameSpecificParams) ? optionalOverrideParams.specialHostnameSpecificParams["www.pixiv.net"]["pixiv_download_first_image_only"].checkBox?.checkBoxValue : this.newEntryParams['pixiv_download_first_image_only'].checkBox?.checkBoxValue 
                         
-            const res = (await this.pixivModelUtility.processPixivId(pixivPostId, dlFirstOnly)) ?? { data: {}, indexer: 0, imagesDataArray: []};
+            const res = (await this.pixivModelUtility.processPixivId(pixivPostId, !!dlFirstOnly)) ?? { data: {}, indexer: 0, imagesDataArray: []};
         return res
     }
 
-    public specialNewEntryParam:IModelSpecialParam = {
+    public newEntryParams: IModelSpecialParam = {
         "pixiv_download_first_image_only" : {
-      containsString: false,
-      checkBoxValue: false,
-            checkBoxDescription: "Download first image only in pixiv post in case of multiple images",
+            type: "param",
+            category: "Anime Picture",
+            hostname: this.supportedHostName,
+            valueType: "checkBox",
+            checkBox: {
+                checkBoxValue: false,
+                checkBoxDescription: "Download first image only in pixiv post in case of multiple images",
+                defaultValue: false,
+            },
         }
     };
     

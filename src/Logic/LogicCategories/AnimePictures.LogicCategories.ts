@@ -9,32 +9,29 @@ export class CategoryLogic implements ILogicCategory {
     public processDictionary:IModelDictionary;
     public categoryFolder = "AnimePictureLogicModels";
     public specialSettingValidityCheck: IParamValidityCheck[];
-    public specialSettingsDictionary: ILogicCategorySpecialSettingsDictionary | undefined;
-    public specialParamsDictionary?: ILogicCategorySpecialParamsDictionary = {specialCategoryParams: {}, specialHostnameSpecificParams: {}};
+    public specialSettingsDictionary?: IModelSpecialParam ;
+    public specialParamsDictionary?: IModelSpecialParam;
     private sauceNAO?: SauceNao
     private utility: Utility;
     public settings: ISettings;
     constructor(settings: ISettings, utility: Utility) {
       this.settings = settings;
       this.utility = utility;
-      this.specialSettingsDictionary = {specialCategorySettings: {}, specialHostnameSpecificSettings: {}};
-      this.specialSettingsDictionary.specialCategorySettings = {};
-       
+      this.specialSettingsDictionary = {};
+      
       const loadedModels = this.utility.loadModels(settings, this.categoryFolder);
       this.processDictionary = loadedModels.processDictionary;
       this.specialSettingsDictionary = loadedModels.specialSettingsDictionary;
       this.specialParamsDictionary = loadedModels.specialParamsDictionary;
       this.specialSettingValidityCheck = [...loadedModels.specialSettingValidityCheckArray, ...SauceNao.specialSettingsParamValidityCheck];
 
-      if (settings.special_settings && settings.special_settings["Anime Picture"]
-          && settings.special_settings["Anime Picture"].specialCategorySettings 
-          && settings.special_settings["Anime Picture"].specialCategorySettings.saucenao_api_key.checkBoxValue 
-          && settings.special_settings["Anime Picture"].specialCategorySettings.saucenao_api_key.stringValue?.value
+      if (settings.special_settings?.saucenao_api_key?.checkBox?.checkBoxValue
+          && settings.special_settings.saucenao_api_key.textField?.value
         ) 
-        this.sauceNAO = new SauceNao(settings.special_settings["Anime Picture"].specialCategorySettings.saucenao_api_key.stringValue.value);
-      if (this.specialSettingsDictionary.specialCategorySettings) {
-        Object.assign(this.specialSettingsDictionary.specialCategorySettings, SauceNao.specialSettingsParam)
-      } else this.specialSettingsDictionary.specialCategorySettings = SauceNao.specialSettingsParam
+        this.sauceNAO = new SauceNao(settings.special_settings.saucenao_api_key.textField.value);
+      if (this.specialSettingsDictionary) {
+        Object.assign(this.specialSettingsDictionary, SauceNao.specialSettingsParam)
+      } else this.specialSettingsDictionary = SauceNao.specialSettingsParam
 
       this.processUrl = this.processUrl.bind(this) 
       this.ProcessInput = this.ProcessInput.bind(this);

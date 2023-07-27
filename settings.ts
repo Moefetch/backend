@@ -1,5 +1,5 @@
 import * as fs from 'fs' 
-import { IParam, ILogicSpecialSettingsDictionary, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary } from "types";
+import { IParam, ILogicSpecialSettingsDictionary, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, IModelSpecialParam } from "types";
 
 type IStockSettings = {
     blur_nsfw: IParam;
@@ -17,8 +17,8 @@ export interface ISetting {
     hostname: string;
     database_url: IParam;
     stock_settings: IStockSettings;
-    special_settings: ILogicSpecialSettingsDictionary;
-    special_params: ILogicSpecialParamsDictionary;
+    special_settings: IModelSpecialParam;
+    special_params: IModelSpecialParam;
 }
 
 /**
@@ -33,8 +33,8 @@ class Settings implements ISetting {
     public hostname: string ;
     public database_url: IParam;
     public stock_settings: IStockSettings;
-    public special_settings: ILogicSpecialSettingsDictionary;
-    public special_params: ILogicSpecialParamsDictionary;
+    public special_settings: IModelSpecialParam;
+    public special_params: IModelSpecialParam;
 
     constructor(){
         !fs.existsSync(process.env.baseDir || '.' + "/settings.json") && this.save()
@@ -56,8 +56,8 @@ class Settings implements ISetting {
           containsString: true,
             checkBoxValue: false,
             checkBoxDescription: "Use a mongoDB database",
-            stringValue: {
-              stringPlaceholder:
+            textField: {
+              fieldPlaceholder:
                 "Database URL, use the form mongodb://username:password@host:port/moefetch",
               value: "",
             }

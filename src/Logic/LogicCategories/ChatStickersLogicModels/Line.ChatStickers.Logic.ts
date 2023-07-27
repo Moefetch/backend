@@ -18,8 +18,8 @@ export default class LogicModel implements ILogicModel {
     }
 
     
-    public specialNewEntryParam:IModelSpecialParam = {}; 
-    public specialSettingsParam:IModelSpecialParam = {};  
+    public newEntryParams:IModelSpecialParam = {}; 
+    public specialSettings:IModelSpecialParam = {};  
 
     
 }

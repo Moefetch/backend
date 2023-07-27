@@ -10,8 +10,8 @@ export class InstagramModelUtility {
       this.settings = settings;
       this.utility = utility;
       const defaultInstagramQueryHash = "b3055c01b4b222b8a47dc12b090e4e64";
-      if (settings.special_settings && settings.special_settings["Social Media"] && settings.special_settings["Social Media"].specialCategorySettings && settings.special_settings["Social Media"].specialCategorySettings.pixiv_cookie) 
-        this.instagramQueryHash = settings.special_settings["Social Media"].specialCategorySettings.pixiv_cookie.stringValue?.value ?? defaultInstagramQueryHash;
+      if (settings.special_settings && settings.special_settings.instagram_query_hash) 
+        this.instagramQueryHash = settings.special_settings.instagram_query_hash.textField?.value ?? defaultInstagramQueryHash;
       else this.instagramQueryHash = defaultInstagramQueryHash
     this.getInstagramCookies().then(c => this.instagramCookie = c);
     
@@ -27,12 +27,17 @@ export class InstagramModelUtility {
   }
   public specialSettingsParam:IModelSpecialParam = {
     "instagram_query_hash" : {
-      containsString: true,
-      checkBoxValue: false,
-      checkBoxDescription: "add an Instagram query hash in case they change default",
-      stringValue: {
-        value: "",
-        stringPlaceholder: "instagram query hash (for the option above)"
+      type: "setting",
+      valueType: "both",
+      checkBox: {
+        checkBoxValue: false,
+        checkBoxDescription: "add an Instagram query hash in case they change default",
+        defaultValue: false,
+      },
+      textField: {
+        value: "b3055c01b4b222b8a47dc12b090e4e64",
+        fieldPlaceholder: "instagram query hash (for the option above)",
+        defaultValue: "b3055c01b4b222b8a47dc12b090e4e64",
       }
     }
   };
@@ -100,7 +105,7 @@ public async processInstagramPost(inputUrl: string, album: string, optionalOverr
         if (regResThumbnail) providedThumbnailFileExtensions[i] = regResThumbnail.fileExtension
       }
     })
-    let providedFileNameFromOptions =  stockOptionalOverrides.useProvidedFileName.stringValue?.value.split('\n')
+    let providedFileNameFromOptions =  stockOptionalOverrides.useProvidedFileName.textField?.value.split('\n')
 
     providedFileNameFromOptions = (providedFileNameFromOptions && providedFileNameFromOptions[0] == '' && providedFileNameFromOptions.length == 1) ? undefined : providedFileNameFromOptions;
     

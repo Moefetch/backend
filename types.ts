@@ -162,16 +162,34 @@ export interface IModelSpecialParam {
     description: string; 
 }
  */
-export interface IParam {
+/* export interface IParam {
     containsString: boolean;
     checkBoxValue: boolean;
     checkBoxDescription: string;
-  errorMessage?: string;
-    stringValue?: {
+    errorMessage?: string;
+    textField?: {
         value: string,
-        stringPlaceholder: string,
+        fieldPlaceholder: string,
     }
 };
+ */
+export interface IParam {
+    category?: string; //if undefined it's a global setting for all categories
+    hostname?: string; //if undefined it's a category specific setting
+    type: string; //cookie, setting, default parameter etc, use case would to to group settings later
+    valueType: "checkBox" | "textField" | "both"
+    checkBox?: {
+        checkBoxValue: boolean;
+        checkBoxDescription: string;
+        defaultValue: boolean;
+    }
+    textField?: {
+        value: string;
+        fieldPlaceholder: string;
+        defaultValue: string;
+    }
+    errorMessage?: string;
+}
 
 export interface IParamValidityCheck {
     indexer: string[];
@@ -189,8 +207,8 @@ export interface ILogicModel {
     supportedHostName:string;
     //modelUtility: any; //cus i cannt put in a constructor type for each unique util
     process: (inputUrl: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewPicture>;
-    specialNewEntryParam?:IModelSpecialParam;
-    specialSettingsParam?:IModelSpecialParam;
+    newEntryParams?: IModelSpecialParam;
+    specialSettings?: IModelSpecialParam;
     specialSettingValidityCheckArray?: IParamValidityCheck[];
 }
 
@@ -231,15 +249,14 @@ export interface IPicFormStockOverrides {
     addId: IParam;
     addTags: IParam;
     useProvidedFileName: IParam;
-  }
-  
+}
 
 export interface ILogicCategory {
     logicCategory: string;
     categoryFolder?: string;
     processDictionary: IModelDictionary;
-    specialParamsDictionary?: ILogicCategorySpecialParamsDictionary;
-    specialSettingsDictionary?: ILogicCategorySpecialSettingsDictionary;
+    specialParamsDictionary?: IModelSpecialParam;
+    specialSettingsDictionary?: IModelSpecialParam;
     specialSettingValidityCheck?: IParamValidityCheck[];
     ProcessInput: (input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewPicture | undefined>
 

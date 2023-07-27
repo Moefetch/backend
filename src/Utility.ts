@@ -1,6 +1,6 @@
 import fs from "fs";
 import probeImageSize from "probe-image-size";
-import { IImageProps, INewPicture, OutgoingHttpHeaders, ISettings, ILogicCategorySpecialSettingsDictionary, ILogicModel,  ILogicCategorySpecialParamsDictionary, IModelDictionary, ILogicCategory, ILogicModelConstructor, IParamValidityCheck } from "../types";
+import { IImageProps, INewPicture, OutgoingHttpHeaders, ISettings, ILogicCategorySpecialSettingsDictionary, ILogicModel,  ILogicCategorySpecialParamsDictionary, IModelDictionary, ILogicCategory, ILogicModelConstructor, IParamValidityCheck, IModelSpecialParam } from "../types";
 import needle from "needle";
 
 export default class Utility {
@@ -9,9 +9,8 @@ export default class Utility {
   
   public loadModels(settings: ISettings, categoryFolder: string) {
     let specialSettingValidityCheckArray: IParamValidityCheck[] = [];
-    let specialSettingsDictionary = {specialCategorySettings: {}, specialHostnameSpecificSettings: {}};
-    let specialParamsDictionary: Required<ILogicCategorySpecialParamsDictionary> = {specialCategoryParams: {}, specialHostnameSpecificParams: {}};
-    specialParamsDictionary.specialHostnameSpecificParams = {}
+    let specialSettingsDictionary: IModelSpecialParam = {}
+    let specialParamsDictionary: IModelSpecialParam = {}
       const animePicModels = fs.readdirSync(`./src/Logic/LogicCategories/${categoryFolder}/`).filter(file => file.endsWith(process.env.EXTENSION ?? "js"))
       const processDictionary:IModelDictionary = {};
       /* 
@@ -24,31 +23,31 @@ export default class Utility {
         const Model:ILogicModelConstructor = require(`./Logic/LogicCategories/${categoryFolder}/${model.substring(0, model.lastIndexOf('.'))}`);
         const modelInstence:ILogicModel = new Model.default(settings)
         processDictionary[modelInstence.supportedHostName] = modelInstence.process;
-        modelInstence.specialNewEntryParam 
-        ? (specialParamsDictionary.specialHostnameSpecificParams[modelInstence.supportedHostName] = modelInstence.specialNewEntryParam) 
+        //loading special parameters
+        modelInstence.newEntryParams 
+        ? Object.assign(specialParamsDictionary, modelInstence.newEntryParams) 
         : ({})
         ;
-
-        modelInstence.specialSettingsParam 
-        ? (Object.assign(specialSettingsDictionary.specialCategorySettings, modelInstence.specialSettingsParam)) 
+        //loading special 
+        modelInstence.specialSettings 
+        ? (Object.assign(specialSettingsDictionary, modelInstence.specialSettings)) 
         : ({})
         ;
+        //
         modelInstence.specialSettingValidityCheckArray 
         ? (specialSettingValidityCheckArray = [...specialSettingValidityCheckArray, ...modelInstence.specialSettingValidityCheckArray])
         : ({})
       })
 
-      const returnSpecialSettingsDictionary: ILogicCategorySpecialSettingsDictionary = {
+      let returnSpecialSettingsDictionary: IModelSpecialParam = {
       }; 
       
-      Object.getOwnPropertyNames(specialSettingsDictionary.specialCategorySettings).length ? returnSpecialSettingsDictionary.specialCategorySettings = specialSettingsDictionary.specialCategorySettings : undefined;
-      Object.getOwnPropertyNames(specialSettingsDictionary.specialHostnameSpecificSettings).length ? returnSpecialSettingsDictionary.specialHostnameSpecificSettings = specialSettingsDictionary.specialHostnameSpecificSettings : undefined;
+      Object.getOwnPropertyNames(specialSettingsDictionary).length ? returnSpecialSettingsDictionary = specialSettingsDictionary : undefined;
 
-      const returnSpecialParamsDictionary: ILogicCategorySpecialParamsDictionary = {
+      let returnSpecialParamsDictionary: IModelSpecialParam = {
       }
 
-      Object.getOwnPropertyNames(specialParamsDictionary.specialCategoryParams).length ? returnSpecialParamsDictionary.specialCategoryParams = specialParamsDictionary.specialCategoryParams : undefined
-      Object.getOwnPropertyNames(specialParamsDictionary.specialHostnameSpecificParams).length ? returnSpecialParamsDictionary.specialHostnameSpecificParams = specialParamsDictionary.specialHostnameSpecificParams : undefined
+      Object.getOwnPropertyNames(specialParamsDictionary).length ? returnSpecialParamsDictionary = specialParamsDictionary : undefined
 
       return {
         processDictionary: processDictionary, 
@@ -109,6 +108,7 @@ export default class Utility {
       return fetch(element, headersObj);
     });
   }
+  
   /**
    * i wanna impliment this but for now im just making the structure
    * i should add checks in case undefined
@@ -119,6 +119,7 @@ export default class Utility {
    * @param settingName the name of the setting
    * @returns 
    */
+  /* 
   public getSpecialSettingValue(settings: ISettings, specialtype: "special_settings" | "special_params", category: string, typeOfSetting: "Hostname Specific" | "category", settingName: string) {
     let element:typeof settings["special_params" | 'special_settings'][string] | undefined = undefined;
     let categorySettings: typeof settings["special_params"][string]["specialCategoryParams" | "specialHostnameSpecificParams" ] | undefined = undefined;
@@ -138,7 +139,7 @@ export default class Utility {
     
     return categorySettings ? categorySettings[settingName] : undefined
   }
-
+ */
   /**
    * checkImageUrlValid
    */

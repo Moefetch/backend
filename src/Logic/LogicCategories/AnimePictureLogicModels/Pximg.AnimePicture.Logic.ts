@@ -17,14 +17,14 @@ export default class LogicModel implements ILogicModel {
         let pixivPostId = url.substring(
             url.lastIndexOf('/') + 1);
 
-          const dlFirstOnly = optionalOverrideParams.specialHostnameSpecificParams ? optionalOverrideParams.specialHostnameSpecificParams["i.pximg.net"]["only_download_selected_image"].checkBoxValue : this.specialNewEntryParam['only_download_selected_image'].checkBoxValue
+          const dlFirstOnly = optionalOverrideParams.specialHostnameSpecificParams ? optionalOverrideParams.specialHostnameSpecificParams["i.pximg.net"]["only_download_selected_image"].checkBox?.checkBoxValue : this.newEntryParams['only_download_selected_image'].checkBox?.checkBoxValue
 
           const arrayIndexer = Number.parseInt(pixivPostId.substring(pixivPostId.indexOf('_p') + 2, pixivPostId.lastIndexOf('_')))
           pixivPostId = pixivPostId.substring(0, pixivPostId.search(/[^0-9]/));
           const isValid = ((await this.pixivModelUtility.checkPixivImageUrlValid(url)));
           if (isValid) {
             const imgRes = await utility.getImageResolution(url)
-            const resultantData = (await this.pixivModelUtility.processPixivId(pixivPostId, dlFirstOnly, arrayIndexer)) ?? {
+            const resultantData = (await this.pixivModelUtility.processPixivId(pixivPostId, !!dlFirstOnly, arrayIndexer)) ?? {
               data: {},
               imagesDataArray: [],
               urlsArray: [{
@@ -59,11 +59,17 @@ export default class LogicModel implements ILogicModel {
           }
     }
 
-    public specialNewEntryParam:IModelSpecialParam = {
+    public newEntryParams: IModelSpecialParam = {
       "only_download_selected_image" : {
-      containsString: false,
-      checkBoxValue: false,
+        type: "param",
+        category: "Anime Picture",
+        valueType: "checkBox",
+        checkBox: {
+          checkBoxValue: false,
           checkBoxDescription: "Only download selected image",
+          defaultValue: false,
+        },
+        hostname: this.supportedHostName,
       }
   };
   

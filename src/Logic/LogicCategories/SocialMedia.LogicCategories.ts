@@ -1,10 +1,10 @@
 import fs from 'fs'
-import { ILogicModel, IModelDictionary, ISettings, ILogicCategory, ILogicModelConstructor, INewPicture, ILogicCategorySpecialSettingsDictionary, ILogicCategorySpecialParamsDictionary, IPicFormStockOverrides } from 'types';
+import { ILogicModel, IModelDictionary, ISettings, ILogicCategory, ILogicModelConstructor, INewPicture, ILogicCategorySpecialSettingsDictionary, ILogicCategorySpecialParamsDictionary, IPicFormStockOverrides, IModelSpecialParam } from 'types';
 import Utility from '../../Utility';
 
 export class CategoryLogic implements ILogicCategory {
-  public specialSettingsDictionary?: ILogicCategorySpecialSettingsDictionary;
-  public specialParamsDictionary?: ILogicCategorySpecialParamsDictionary;
+  public specialSettingsDictionary?: IModelSpecialParam;
+  public specialParamsDictionary?: IModelSpecialParam;
   public categoryFolder = 'SocialMediaLogicModels'
   public logicCategory: string = "Social Media"
   public processDictionary:IModelDictionary;

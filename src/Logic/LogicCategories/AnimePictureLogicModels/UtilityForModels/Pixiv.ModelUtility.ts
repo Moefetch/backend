@@ -5,12 +5,18 @@ export class PixivModelUtility {
 
   public specialSettingsParam:IModelSpecialParam = {
     "pixiv_cookie" : {
-      containsString: true,
-      checkBoxValue: false,
-      checkBoxDescription: "use a pixiv logged in cookie to access NSFW works",
-      stringValue: {
+      type: "setting",
+      category: "Anime Picture",
+      valueType: "both",
+      checkBox : {
+        checkBoxValue: false,
+        checkBoxDescription: "use a pixiv logged in cookie to access NSFW works",
+        defaultValue: false,
+      },
+      textField: {
         value: "",
-        stringPlaceholder: "Pixiv logged in cookie (for the option above)"
+        fieldPlaceholder: "Pixiv logged in cookie (for the option above)",
+        defaultValue: "",
       }
     }
   };
@@ -240,8 +246,8 @@ export class PixivModelUtility {
       this.pixivCookie = '';
       this.utility = utility;
       
-      if (settings.special_settings && settings.special_settings["Anime Picture"] && settings.special_settings["Anime Picture"].specialCategorySettings && settings.special_settings["Anime Picture"].specialCategorySettings.pixiv_cookie) 
-        this.pixivCookie = settings.special_settings["Anime Picture"].specialCategorySettings.pixiv_cookie.stringValue?.value ?? "";
+      if (settings.special_settings && settings.special_settings.pixiv_cookie) 
+        this.pixivCookie = settings.special_settings.pixiv_cookie.textField?.value ?? "";
       else this.getPixivCookies().then(cookie => this.pixivCookie = cookie)
       this.processPixivId = this.processPixivId.bind(this)
       this.checkPixivImageUrlValid = this.checkPixivImageUrlValid.bind(this)
