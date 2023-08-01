@@ -28,6 +28,7 @@ export class InstagramModelUtility {
   public specialSettingsParam:IModelSpecialParam = {
     "instagram_query_hash" : {
       type: "setting",
+      category: "Social Media",
       valueType: "both",
       checkBox: {
         checkBoxValue: false,

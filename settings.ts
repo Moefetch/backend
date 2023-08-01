@@ -13,7 +13,6 @@ export interface ISetting {
     port: number;
     ip: string;
     downloadFolder: string;
-    initialSetup: boolean;
     hostname: string;
     database_url: IParam;
     stock_settings: IStockSettings;
@@ -29,7 +28,6 @@ class Settings implements ISetting {
     public port: number;
     public ip: string;
     public downloadFolder: string;
-    public initialSetup: boolean;
     public hostname: string ;
     public database_url: IParam;
     public stock_settings: IStockSettings;
@@ -42,7 +40,6 @@ class Settings implements ISetting {
             ip, 
             hostname, 
             database_url, 
-            initialSetup,
             downloadFolder,
             stock_settings,
             special_settings,
@@ -50,7 +47,6 @@ class Settings implements ISetting {
             fs.readFileSync(process.env.baseDir || '.' + "/settings.json", { encoding: "utf-8" })
         ) as ISetting;
         this.ip = !!ip ? ip : "";
-        this.initialSetup = initialSetup ?? false;
         this.port = port ?? 2234;
         this.database_url = database_url ?? {
           containsString: true,
