@@ -6,7 +6,7 @@ const utility = new Utility();
 
 export default class LogicModel implements ILogicModel {
     public supportedHostName: string = "www.instagram.com";
-    
+    public category: string = "Social Media"
     public InstagramModelUtility: InstagramModelUtility;
     constructor(settings: ISettings) {
         this.InstagramModelUtility = new InstagramModelUtility(settings, utility)

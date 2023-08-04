@@ -6,7 +6,7 @@ const utility = new Utility();
 
 export default class LogicModel implements ILogicModel {
     public supportedHostName: string = "store.line.me";
-    
+    public category: string = "Chat Stickers"
     public lineStickersModelUtility: LineStickersModelUtility;
     constructor(settings: ISettings) {
         this.lineStickersModelUtility = new LineStickersModelUtility(settings, utility)

@@ -6,6 +6,7 @@ const utility = new Utility();
 
 export default class LogicModel implements ILogicModel {
     public supportedHostName: string = "www.pixiv.net";
+    public category:string ="Anime Picture";
     private settings: ISettings
     public specialSettings:IModelSpecialParam;
     public pixivModelUtility: PixivModelUtility;

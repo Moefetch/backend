@@ -6,7 +6,7 @@ const utility = new Utility();
 
 export default class LogicModel implements ILogicModel {
     public supportedHostName: string = "danbooru.donmai.us";
-    
+    public category:string ="Anime Picture";
     public booruModelUtility: BooruModelUtility;
     constructor(settings: ISettings) {
         this.booruModelUtility = new BooruModelUtility(settings, utility)

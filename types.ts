@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import Utility from './src/Utility'
 
 export interface ISaucenaoResData{
 
@@ -202,10 +203,22 @@ export interface IParamValidityCheck {
 export interface IModelSpecialParam {
     [name:string]: IParam
 }
+export interface IProcessDictionary {
+        [category: string]: { //undefined is for wildcard functions, gets access to other processing functions within same category
+            [hostname: string]: undefined | ((inputUrl: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewPicture | undefined>);
+            undefined?: (inputUrl: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides, processDictionary?: IProcessDictionary[string]) => Promise<INewPicture | undefined>;
+        }
+    }
 
+export interface ILogicModels {
+    processDictionary: IProcessDictionary
+    newEntryParams?: IModelSpecialParam;
+    specialSettings?: IModelSpecialParam;
+    specialSettingValidityCheckArray?: IParamValidityCheck[];
+}
 export interface ILogicModel {
     supportedHostName:string;
-    //modelUtility: any; //cus i cannt put in a constructor type for each unique util
+    category: string;
     process: (inputUrl: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewPicture>;
     newEntryParams?: IModelSpecialParam;
     specialSettings?: IModelSpecialParam;
