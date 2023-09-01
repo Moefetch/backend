@@ -1,10 +1,10 @@
 import fs from "fs";
-import { ICategoryDictionary, ILogicCategory, ILogicCategorySpecialParamsDictionary, ILogicModels, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, IModelSpecialParam, IParam, IParamValidityCheck, IPicFormStockOverrides, ISettings } from "types";
+import { IProcessDictionary, ICategoryDictionary, ILogicCategory, ILogicCategorySpecialParamsDictionary, ILogicModels, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, IModelSpecialParam, IParam, IParamValidityCheck, IPicFormStockOverrides, ISettings, INewPicture } from "types";
 import settings from "../../settings";
 import Utility from "../Utility";
 export class Logic {
     public settings: ISettings;
-    public categoryDictionary: ICategoryDictionary;
+    public categoryDictionary: IProcessDictionary;
     public specialSettingsDictionary?: IModelSpecialParam
     public specialParamsDictionary?: IModelSpecialParam;
     public specialSettingValidityCheck: IParamValidityCheck[] = [];
@@ -14,6 +14,8 @@ export class Logic {
         this.utility = new Utility();
         this.settings = settings;
         this.categoryDictionary = this.loadLogicModules();
+        console.log(this.categoryDictionary);
+        
         this.supportedTypes = Object.getOwnPropertyNames(this.categoryDictionary);
         
 
@@ -23,7 +25,23 @@ export class Logic {
      * ProcessInput
      */
     public async ProcessInput(input: string | File, type:string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) {
-        let resultantData = await this.categoryDictionary[type](input, album, optionalOverrideParams, stockOptionalOverrides)
+        let categoryDictionary = this.categoryDictionary[type]
+        let resultantData: INewPicture | undefined;
+        if (typeof input == "string") {
+            const {hostname} = new URL(input)
+            const processFunc = categoryDictionary[hostname]
+            if (processFunc) {
+                resultantData = await processFunc(input, album, optionalOverrideParams, stockOptionalOverrides)
+            } else {
+                if (categoryDictionary['undefined']) {
+                    resultantData = await categoryDictionary['undefined'](input, album, optionalOverrideParams, stockOptionalOverrides)   
+                }
+            }
+        } else {
+            if (categoryDictionary['undefined']) {
+                resultantData = await categoryDictionary['undefined'](input, album, optionalOverrideParams, stockOptionalOverrides)   
+            }
+        }
 
         if (resultantData && resultantData.urlsArray?.length) {
 
@@ -52,7 +70,7 @@ export class Logic {
     }    
 
     private loadLogicModules() {
-        const categoryDictionary:ICategoryDictionary = {};
+        const categoryDictionary: IProcessDictionary = {};
         const settingsDictionary: IModelSpecialParam = {}
         const paramsDictionary: IModelSpecialParam = {}
 

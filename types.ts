@@ -57,7 +57,7 @@ export interface IAlbumDictionaryItemMongo extends mongoose.Document {
 
 }
 
-export type AlbumSchemaType = "Anime Pic";
+export type AlbumSchemaType = string;
 
 export interface IAlbumDictionaryItem {
     _id?: string;
@@ -71,9 +71,11 @@ export interface IAlbumDictionaryItem {
 
 export interface ITagEntry {
     _id: string;
+    tag: string;
 }
 export interface ITagEntryMongo extends mongoose.Document {
     _id: string;
+    tag: string;
 }
 
 
@@ -98,7 +100,7 @@ export interface IPixivTags {
 export interface IImageDataArray  {
     file: string;
     isVideo: boolean;
-    thumbnail_file: string;
+    thumbnail_file?: string;
     imageSize?: ISizeCalculationResult;
 }
 export interface IDBEntry {

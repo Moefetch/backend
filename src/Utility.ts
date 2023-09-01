@@ -6,7 +6,28 @@ import needle from "needle";
 export default class Utility {
   constructor() {
   }
+
+
   
+  /**
+   * getTypeFromUrl
+   */
+  public async getTypeFromUrl(
+    url: string,
+    options?: {
+      referrer?: string;
+      providedFileName?: string;
+      providedFileExtension?: string;
+      providedHeaders?: RequestInit;
+    }
+    ) {
+    
+      const res = await this.request(url, "GET", {
+        providedHeaders: options?.providedHeaders,
+        referrer: options?.referrer,
+      })
+      if (res.statusText == "OK") return res.blob().then((blob) => blob.type).then(type => type.substring(0, type.indexOf('/')))
+    }
   public loadModels(settings: ISettings, categoryFolder: string) {
     let specialSettingValidityCheckArray: IParamValidityCheck[] = [];
     let specialSettingsDictionary: IModelSpecialParam = {}

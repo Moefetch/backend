@@ -220,7 +220,8 @@ public async getAlbums(showHidden: boolean) {
    */
    public addTagEntry(tag: string, type: AlbumSchemaType, tagToUpdateTo?: string) {
     const TagsAutocompleteDB = this.tagsDBDictionary[type];
-    TagsAutocompleteDB.updateOne({_id: tag}, {_id: tagToUpdateTo ?? tag}, {upsert: true})
+    TagsAutocompleteDB.updateOne({_id: tag}, {_id: tagToUpdateTo ?? tag, tag: tagToUpdateTo?.toLowerCase() ?? tag.toLowerCase() }, {upsert: true})
+    this.tagsDBDictionary["All Categories"].updateOne({_id: tag}, {_id: tagToUpdateTo ?? tag, tag: tagToUpdateTo?.toLowerCase() ?? tag.toLowerCase() }, {upsert: true})
   }
 
  /**
@@ -244,11 +245,17 @@ public async getAlbums(showHidden: boolean) {
       console.log("Connected to Mongo server...");
     });
     this.tagsDBDictionary = this.loadTagDictionary(logicCategories)
+    this.loadAllCategoryTagsCombinedTagDB()
   }
   private loadTagDictionary(logicCategories: string[]) {
     return Object.fromEntries(logicCategories.map(category => {
       const categoryTagModel = CreateTagsAutocompleteDBModel(category.replace(' ',"-").toLowerCase());
       return [category, categoryTagModel]
     }))
+  }
+  private loadAllCategoryTagsCombinedTagDB() {
+    const tagDB = CreateTagsAutocompleteDBModel(`all-categories`);
+    this.tagsDBDictionary["All Categories"] = tagDB;
+
   }
 }

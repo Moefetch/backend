@@ -6,3 +6,8 @@ dist-ssr
 settings.json
 test.ts
 image.svg
+plugins/logicModels/Instagram.LogicModel.ts
+plugins/logicModels/Booru.LogicModel.ts
+plugins/logicModels/Line.LogicModel.ts
+plugins/logicModels/Pixiv.LogicModel.ts
+plugins/logicModels/Saucenao.LogicModel.ts

@@ -1,11 +1,20 @@
-import Utility from "../../Utility";
-import { ILogicCategory, ILogicCategorySpecialParamsDictionary, IModelDictionary, INewPicture, IPicFormStockOverrides, ISettings } from "types";
+import Utility from "src/Utility";
+import { ILogicModels, ILogicCategorySpecialParamsDictionary, IModelDictionary, INewPicture, IPicFormStockOverrides, ISettings, IProcessDictionary } from "types";
 
-export class CategoryLogic implements ILogicCategory {
-    public logicCategory: string = "Plain image";
-    public processDictionary: IModelDictionary = {};
+export default class LogicModel implements ILogicModels {
+    public processDictionary: IProcessDictionary;
     private utility: Utility;
     public settings: ISettings;
+    constructor(settings: ISettings, utility: Utility){
+      this.settings = settings;
+      this.utility = utility;
+      this.ProcessInput = this.ProcessInput.bind(this);
+      this.processDictionary = {
+        "Plain image": {
+          undefined: this.ProcessInput
+        }
+      }
+    }
     public async ProcessInput(input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides:IPicFormStockOverrides){
         let resultantData: INewPicture | undefined = {
             data: {},
@@ -15,18 +24,20 @@ export class CategoryLogic implements ILogicCategory {
           };
           
           if (typeof input == "string"){
-            if( await this.utility.checkImageUrlValid(input)) {
-                resultantData = await this.processUrl(input, album, optionalOverrideParams, stockOptionalOverrides);
+            const type = await this.utility.getTypeFromUrl(input);
+            if(type) {
+                resultantData = await this.processUrl(input, album, optionalOverrideParams, stockOptionalOverrides, type);
             } else return undefined
           }
-          else {
+          else { //process as a file not a link
             resultantData = {data: {}, indexer: 0, imagesDataArray: []} // i need to make it download and add as is cus no processing
           }
         return resultantData;
     }
 
-    private async processUrl(url: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides)  {
-        const imageProps = await this.utility.getImageResolution(url)
+    private async processUrl(url: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides, type: string)  {
+        //i need to do something about thumbnails
+      const imageProps = type == 'image' ? await this.utility.getImageResolution(url) : undefined; // i need to fix this to support video      
         let resultantData: INewPicture | undefined = {
             data: {},
             storedResult: "plain",
@@ -35,8 +46,8 @@ export class CategoryLogic implements ILogicCategory {
             imagesDataArray: [],
             urlsArray: [{
                 imageUrl:url, 
-                thumbnailUrl: url,
-                isVideo: false, //needs to be changed
+                thumbnailUrl: type !== 'image' ? url : '',
+                isVideo: type !== 'image',
                 height: imageProps?.imageSize.height || 0, 
                 width: imageProps?.imageSize.width || 0 
             }],
@@ -50,21 +61,15 @@ export class CategoryLogic implements ILogicCategory {
           })
           resultantData.imagesDataArray = [{
             file: path, 
-            isVideo: false, 
+            isVideo: type !== 'image', 
             imageSize: {
               height: imageProps?.imageSize.height || 0, 
               width: imageProps?.imageSize.width || 0
             },
-            thumbnail_file: path,
+            thumbnail_file: undefined,
           }]
           resultantData.thumbnailFile = path;
         return resultantData
 
-    }
-
-    constructor(settings: ISettings, utility: Utility){
-        this.settings = settings;
-        this.utility = utility;
-        this.ProcessInput = this.ProcessInput.bind(this);
     }
 }

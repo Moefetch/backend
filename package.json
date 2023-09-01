@@ -35,18 +35,10 @@
   },
   "pkg": {
     "scripts": [
-      "./src/Logic/*.js",
-      "./src/Logic/LogicCategories/*.js",
-      "./src/Logic/LogicCategories/*/*.js",
-      "./src/Logic/LogicCategories/*/*/*.js",
-      "./src/Logic/LogicCategories/*/*/*/*.js"
+      "./plugins/logicModels/*.js"
     ],
     "assets": [
-      "./src/Logic/*.js",
-      "./src/Logic/LogicCategories/*.js",
-      "./src/Logic/LogicCategories/*/*.js",
-      "./src/Logic/LogicCategories/*/*/*.js",
-      "./src/Logic/LogicCategories/*/*/*/*.js"
+      "./plugins/logicModels/*.js"
     ],
     "targets": [
       "latest-linux-x64",

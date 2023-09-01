@@ -156,7 +156,7 @@ const filter = showHidden ? {} : {isHidden: false};
   * addPicture
   */
   public addEntry(album: string, entryOBJ: IDBEntry, type: AlbumSchemaType) {
-    const convertedEntry = this.convertIAnimePicToIEntry(entryOBJ)
+    const convertedEntry = this.convertINewPicToIEntry(entryOBJ)
     const newModelEntry = albumsDictionaryMap(album);
     if (convertedEntry.tags) {
       convertedEntry.tags.forEach(tag => this.addTagEntry(tag, type))
@@ -170,7 +170,7 @@ const filter = showHidden ? {} : {isHidden: false};
  /**
   * convertIAnimePicToIEntry
   */
- public convertIAnimePicToIEntry(entryOBJ: any) {
+ public convertINewPicToIEntry(entryOBJ: any) {
   const exportEntry = entryOBJ;
   delete exportEntry.data;
   delete exportEntry.urlsArray;
@@ -236,30 +236,41 @@ const filter = showHidden ? {} : {isHidden: false};
    * addTagEntry
    */
   public addTagEntry(tag: string, type: AlbumSchemaType, tagToUpdateTo?: string) {
-    const AnimePicTagsDB = this.tagsDBDictionary[type];
-    AnimePicTagsDB.update({_id: tag.toLocaleLowerCase()}, {_id: tagToUpdateTo?.toLocaleLowerCase() ?? tag}, {upsert: true})
+    const tagDB = this.tagsDBDictionary[type];
+    const masterTagDB = this.tagsDBDictionary["All Categories"];
+    tagDB.update({_id: tag.toLocaleLowerCase()}, {_id: tagToUpdateTo?.toLowerCase() ?? tag, tag: tagToUpdateTo?.toLowerCase() ?? tag.toLowerCase()}, {upsert: true})
+    masterTagDB.update({_id: tag.toLocaleLowerCase()}, {_id: tagToUpdateTo?.toLowerCase() ?? tag, tag: tagToUpdateTo?.toLowerCase() ?? tag.toLowerCase()}, {upsert: true})
   }
 
  /**
   * getTagsForAutocomplete
   */
  public getTagsForAutocomplete(search: string, type: AlbumSchemaType) {
-  const AnimePicTagsDB = this.tagsDBDictionary[type];
-  const searchRegex = RegExp(search);
+  const tagDB = this.tagsDBDictionary[type];
+
+  const searchRegex = RegExp(search.toLowerCase());
   return new Promise<string[] | Error>((resolve, reject) => {
-    AnimePicTagsDB.find({_id: {$regex: searchRegex}}).exec((err, docs) => {
+    tagDB.find({tag: {$regex: searchRegex}}, function (err: any, docs: any[]) {
     err ? reject(err) : resolve(docs.map(tag => tag._id))
     })
   })
  }
   public tagsDBDictionary: {[x:string]: nedb<ITagEntry>}
   constructor(logicCategories: string[]){
-    this.tagsDBDictionary = this.loadTagDictionary(logicCategories)
+    this.tagsDBDictionary = this.loadTagDictionary(logicCategories);
+    this.loadAllCategoryTagsCombinedTagDB()
   }
   private loadTagDictionary(logicCategories: string[]) {
     return Object.fromEntries(logicCategories.map(category => {
       const categoryTagDB = new nedb<ITagEntry>(`${baseDBURL}/Tags/${category.replace(' ',"-").toLowerCase()}.db`);
+      categoryTagDB.loadDatabase()
       return [category, categoryTagDB]
     }))
+  }
+  private loadAllCategoryTagsCombinedTagDB() {
+    const tagDB = new nedb<ITagEntry>(`${baseDBURL}/Tags/all-categories.db`);
+    tagDB.loadDatabase();
+    this.tagsDBDictionary["All Categories"] = tagDB;
+
   }
 }
