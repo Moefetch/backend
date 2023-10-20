@@ -52,11 +52,13 @@ export default class LogicModel implements ILogicModels {
                 width: imageProps?.imageSize.width || 0 
             }],
           };
+          const parsedTrueURL = url.substring(0, url.indexOf('?'));
+          
           const parse_regex = new RegExp(String.raw `\/.*\/(?<fileName>.*)\.(?<fileExtension>.*)`)
-          const parseResult = url.match(parse_regex)?.groups
-          const providedFileName = (parseResult?.fileName ?? url.substring(url.lastIndexOf('/') + 1, url.indexOf('.'))) + `- ${Date.now()}`
-          const providedFileExtension = parseResult?.fileExtension ?? url.substring(url.indexOf('.') + 1)
-          const path = await this.utility.downloadFromUrl(url, this.settings.downloadFolder, `/saved_pictures/${album}`, {
+          const parseResult = parsedTrueURL.match(parse_regex)?.groups
+          const providedFileName = (parseResult?.fileName ?? parsedTrueURL.substring(parsedTrueURL.lastIndexOf('/') + 1, parsedTrueURL.indexOf('.'))) + `- ${Date.now()}`
+          const providedFileExtension = parseResult?.fileExtension ?? parsedTrueURL.substring(parsedTrueURL.indexOf('.') + 1)
+          const path = await this.utility.downloadFromUrl(parsedTrueURL, this.settings.downloadFolder, `/saved_pictures/${album}`, {
             providedFileName: providedFileName, providedFileExtension: providedFileExtension
           })
           resultantData.imagesDataArray = [{
@@ -66,9 +68,11 @@ export default class LogicModel implements ILogicModels {
               height: imageProps?.imageSize.height || 0, 
               width: imageProps?.imageSize.width || 0
             },
-            thumbnail_file: undefined,
+            thumbnail_file: path,
           }]
           resultantData.thumbnailFile = path;
+          console.log(resultantData);
+          
         return resultantData
 
     }

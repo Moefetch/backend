@@ -24,7 +24,7 @@ export class Logic {
     /**
      * ProcessInput
      */
-    public async ProcessInput(input: string | File, type:string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) {
+    public async ProcessInput(input: string | File, type: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) {
         let categoryDictionary = this.categoryDictionary[type]
         let resultantData: INewPicture | undefined;
         if (typeof input == "string") {
@@ -62,7 +62,8 @@ export class Logic {
                 }
                 )
                 
-            } else resultantData.thumbnailURL = resultantData.imagesDataArray[resultantData.indexer].thumbnail_file
+            } //else if (!resultantData.thumbnailFile && !resultantData.imagesDataArray[resultantData.indexer].isVideo && !resultantData.imagesDataArray[resultantData.indexer].thumbnail_file) resultantData.thumbnailURL = resultantData.imagesDataArray[resultantData.indexer].file
+            else resultantData.thumbnailURL = resultantData.imagesDataArray[resultantData.indexer].thumbnail_file
 
             return resultantData;
         }
