@@ -83,7 +83,9 @@ export default class Utility {
    */
   public saveBlankThumbnail(icoPath: string) {
     const thumbnailSVGContent = '<svg fill="#ffffff" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g id="image"><path d="M18,4.25H6A2.75,2.75,0,0,0,3.25,7V17A2.75,2.75,0,0,0,6,19.75H18A2.75,2.75,0,0,0,20.75,17V7A2.75,2.75,0,0,0,18,4.25ZM6,5.75H18A1.25,1.25,0,0,1,19.25,7v8.19l-2.72-2.72a.7.7,0,0,0-.56-.22.79.79,0,0,0-.55.27l-1.29,1.55-4.6-4.6A.7.7,0,0,0,9,9.25a.79.79,0,0,0-.55.27L4.75,13.93V7A1.25,1.25,0,0,1,6,5.75ZM4.75,17v-.73l4.3-5.16,4.12,4.12-2.52,3H6A1.25,1.25,0,0,1,4.75,17ZM18,18.25H12.6l3.45-4.14,3.15,3.15A1.23,1.23,0,0,1,18,18.25Z"/></g></svg>'
-    fs.writeFileSync(icoPath, thumbnailSVGContent)
+    const videoThumnailSVG = '<svg class="svg-icon" fill="#ffffff" style="width: 1em; height: 1em;vertical-align: middle;;overflow: hidden;" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M590.3 532.7l-118 88.5c-9.8 7.3-23.6 5.3-31-4.4-2.9-3.8-4.4-8.5-4.4-13.3v-177c0-12.2 9.9-22.1 22.1-22.1 4.8 0 9.4 1.6 13.3 4.4l118 88.5c9.8 7.3 11.8 21.2 4.4 31-1.2 1.6-2.7 3.1-4.4 4.4zM247.5 205.3h530.9c48.9 0 88.5 39.6 88.5 88.5v442.4c0 48.9-39.6 88.5-88.5 88.5H247.5c-48.9 0-88.5-39.6-88.5-88.5V293.8c0-48.9 39.7-88.5 88.5-88.5z m442.4 44.3H336v530.9h353.9V249.6zM203.3 382.3h88.5V249.6h-44.2c-24.4 0-44.2 19.8-44.2 44.2v88.5z m619.3 0v-88.5c0-24.4-19.8-44.2-44.2-44.2h-44.2v132.7h88.4zM203.3 647.7v88.5c0 24.4 19.8 44.2 44.2 44.2h44.2V647.7h-88.4z m0-44.2h88.5v-177h-88.5v177z m619.3 44.2h-88.5v132.7h44.2c24.4 0 44.2-19.8 44.2-44.2v-88.5z m0-44.2v-177h-88.5v177h88.5z"  /></svg>'
+    fs.writeFileSync(icoPath + 'image.svg', thumbnailSVGContent)
+    fs.writeFileSync(icoPath + 'video.svg', videoThumnailSVG)
   }
 
   public defaultHeaders: Headers = new Headers({

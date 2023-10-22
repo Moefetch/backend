@@ -39,41 +39,38 @@ export default class LogicModel implements ILogicModels {
         //i need to do something about thumbnails
       const imageProps = type == 'image' ? await this.utility.getImageResolution(url) : undefined; // i need to fix this to support video      
         let resultantData: INewPicture | undefined = {
-            data: {},
-            storedResult: "plain",
-            indexer: 0,
-            isNSFW: false,
-            imagesDataArray: [],
-            urlsArray: [{
-                imageUrl:url, 
-                thumbnailUrl: type !== 'image' ? url : '',
-                isVideo: type !== 'image',
-                height: imageProps?.imageSize.height || 0, 
-                width: imageProps?.imageSize.width || 0 
-            }],
-          };
-          const parsedTrueURL = url.substring(0, url.indexOf('?'));
-          
-          const parse_regex = new RegExp(String.raw `\/.*\/(?<fileName>.*)\.(?<fileExtension>.*)`)
-          const parseResult = parsedTrueURL.match(parse_regex)?.groups
-          const providedFileName = (parseResult?.fileName ?? parsedTrueURL.substring(parsedTrueURL.lastIndexOf('/') + 1, parsedTrueURL.indexOf('.'))) + `- ${Date.now()}`
-          const providedFileExtension = parseResult?.fileExtension ?? parsedTrueURL.substring(parsedTrueURL.indexOf('.') + 1)
-          const path = await this.utility.downloadFromUrl(parsedTrueURL, this.settings.downloadFolder, `/saved_pictures/${album}`, {
-            providedFileName: providedFileName, providedFileExtension: providedFileExtension
-          })
-          resultantData.imagesDataArray = [{
-            file: path, 
-            isVideo: type !== 'image', 
-            imageSize: {
+          data: {},
+          storedResult: "plain",
+          indexer: 0,
+          isNSFW: false,
+          imagesDataArray: [],
+          urlsArray: [{
+              imageUrl:url, 
+              thumbnailUrl: type !== 'image' ? url : '',
+              isVideo: type !== 'image',
               height: imageProps?.imageSize.height || 0, 
-              width: imageProps?.imageSize.width || 0
-            },
-            thumbnail_file: path,
-          }]
-          resultantData.thumbnailFile = path;
-          console.log(resultantData);
-          
-        return resultantData
-
+              width: imageProps?.imageSize.width || 0 
+          }],
+        };
+        const parsedTrueURL = url.substring(0, url.indexOf('?'));
+        
+        const parse_regex = new RegExp(String.raw `\/.*\/(?<fileName>.*)\.(?<fileExtension>.*)`)
+        const parseResult = parsedTrueURL.match(parse_regex)?.groups
+        const providedFileName = (parseResult?.fileName ?? parsedTrueURL.substring(parsedTrueURL.lastIndexOf('/') + 1, parsedTrueURL.indexOf('.'))) + `- ${Date.now()}`
+        const providedFileExtension = parseResult?.fileExtension ?? parsedTrueURL.substring(parsedTrueURL.indexOf('.') + 1)
+        const path = await this.utility.downloadFromUrl(parsedTrueURL, this.settings.downloadFolder, `/saved_pictures/${album}`, {
+          providedFileName: providedFileName, providedFileExtension: providedFileExtension
+        })
+        resultantData.imagesDataArray = [{
+          file: path, 
+          isVideo: type !== 'image', 
+          imageSize: {
+            height: imageProps?.imageSize.height || 0, 
+            width: imageProps?.imageSize.width || 0
+          },
+          thumbnail_file: type == 'image' ? path : 'album_thumbnail_files/video.svg',
+        }]
+        resultantData.thumbnailFile = type == 'image' ? path : 'album_thumbnail_files/video.svg';
+      return resultantData;
     }
 }

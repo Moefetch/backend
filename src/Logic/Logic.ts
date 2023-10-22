@@ -79,12 +79,22 @@ export class Logic {
         
         logicModules.forEach(category => {
             const logicModule = require(`../../plugins/logicModels/${category.substring(0, category.lastIndexOf('.'))}`);
-            const moduleInstance: ILogicModels = new logicModule.default(this.settings, this.utility)
             
+            const moduleInstance: ILogicModels = new logicModule.default(this.settings, this.utility)
+
             moduleInstance.specialSettings ? (Object.assign(settingsDictionary, moduleInstance.specialSettings)) : {};
             moduleInstance.newEntryParams ? (Object.assign(paramsDictionary, moduleInstance.newEntryParams)) : {};
             moduleInstance.specialSettingValidityCheckArray ? (this.specialSettingValidityCheck = [...this.specialSettingValidityCheck, ...moduleInstance.specialSettingValidityCheckArray]) : ({})
-            Object.assign(categoryDictionary,moduleInstance.processDictionary)
+            Object.getOwnPropertyNames(moduleInstance.processDictionary).forEach(category => {
+                if (!categoryDictionary[category]) {
+                    Object.assign(categoryDictionary, moduleInstance.processDictionary)
+                } else {
+                    Object.assign(categoryDictionary[category], moduleInstance.processDictionary[category])
+                }
+            
+            })
+            
+            
         })
         this.specialParamsDictionary = paramsDictionary;
         this.specialSettingsDictionary = settingsDictionary;
