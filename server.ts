@@ -8,9 +8,6 @@ import router from "./src/routes";
 
 const utility = new Utility();
 
-console.log('Settings: ', settings);
-
-
 if (!utility.checkDirectoryAndCreate(`${settings.downloadFolder}/album_thumbnail_files/`)) {
   utility.saveBlankThumbnail(`${settings.downloadFolder}/album_thumbnail_files/`)
   /* utility.downloadFromUrl(

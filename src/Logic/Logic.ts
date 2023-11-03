@@ -1,4 +1,4 @@
-import fs from "fs";
+import fs, { ReadStream } from "fs";
 import { IProcessDictionary, ICategoryDictionary, ILogicCategory, ILogicCategorySpecialParamsDictionary, ILogicModels, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, IModelSpecialParam, IParam, IParamValidityCheck, IPicFormStockOverrides, ISettings, INewPicture } from "types";
 import settings from "../../settings";
 import Utility from "../Utility";
@@ -14,7 +14,6 @@ export class Logic {
         this.utility = new Utility();
         this.settings = settings;
         this.categoryDictionary = this.loadLogicModules();
-        console.log(this.categoryDictionary);
         
         this.supportedTypes = Object.getOwnPropertyNames(this.categoryDictionary);
         
@@ -24,25 +23,24 @@ export class Logic {
     /**
      * ProcessInput
      */
-    public async ProcessInput(input: string | File, type: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) {
+    public async ProcessInput(input: string | File, type: string, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides) {
         let categoryDictionary = this.categoryDictionary[type]
         let resultantData: INewPicture | undefined;
-        if (typeof input == "string") {
+        let inputToProcess: string | File | ReadStream | undefined = undefined;
+        if (typeof input == "string" && ~input.search(/^https?:\/\//)) { // string mught be path
             const {hostname} = new URL(input)
             const processFunc = categoryDictionary[hostname]
             if (processFunc) {
                 resultantData = await processFunc(input, album, optionalOverrideParams, stockOptionalOverrides)
-            } else {
-                if (categoryDictionary['undefined']) {
-                    resultantData = await categoryDictionary['undefined'](input, album, optionalOverrideParams, stockOptionalOverrides)   
-                }
-            }
-        } else {
-            if (categoryDictionary['undefined']) {
-                resultantData = await categoryDictionary['undefined'](input, album, optionalOverrideParams, stockOptionalOverrides)   
-            }
+            } else inputToProcess = input
+        } else inputToProcess = input;
+        
+        if (inputToProcess) {
+           if (categoryDictionary['undefined']) {
+               resultantData = await categoryDictionary['undefined'](inputToProcess, album, optionalOverrideParams, stockOptionalOverrides, categoryDictionary)
+           }
         }
-
+         
         if (resultantData && resultantData.urlsArray?.length) {
 
             if (!resultantData.imagesDataArray.length) {  
@@ -84,6 +82,7 @@ export class Logic {
 
             moduleInstance.specialSettings ? (Object.assign(settingsDictionary, moduleInstance.specialSettings)) : {};
             moduleInstance.newEntryParams ? (Object.assign(paramsDictionary, moduleInstance.newEntryParams)) : {};
+            
             moduleInstance.specialSettingValidityCheckArray ? (this.specialSettingValidityCheck = [...this.specialSettingValidityCheck, ...moduleInstance.specialSettingValidityCheckArray]) : ({})
             Object.getOwnPropertyNames(moduleInstance.processDictionary).forEach(category => {
                 if (!categoryDictionary[category]) {

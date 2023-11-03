@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import express from "express";
-import { AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, INewPicture, IParam, IPicFormStockOverrides, ISettings } from "types";
+import { IReqFile, AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, INewPic, INewPicture, IParam, IPicFormStockOverrides, ISettings } from "types";
 import fs from "fs";
 import MongoDatabaseLogic from "./mongoDatabaseLogic";
 import {Logic} from "./Logic/Logic"
@@ -55,7 +55,7 @@ function compareSpecialSettingsToDefault(
   divisionType: "special_settings" | "special_params", 
   defaultSpecialSettingsOrParams: {[key: string]: IParam}
   ){
-  //the goal is get settings from default and if they dont exuist in settings object add (the else part is adding)
+  //the goal is get to default settings and if they dont exist in settings object add (the else part is adding)
 
   let internalSettingVar = (JSON.parse(JSON.stringify({...initialSettings}))) as typeof initialSettings;
   if (!internalSettingVar[divisionType] || !Object.getOwnPropertyNames(internalSettingVar[divisionType]).length) {
@@ -124,106 +124,130 @@ router.post(
     return res.status(200).json({ sex: "sex" });
   });
 
-  router.post("/add-picture", async (req, res) => {
-    const { url, album, type, isHidden, optionalOverrideParams, stockOptionalOverrides } = req.body; //remember to do .split('\n') and for each to get the stuff bla bla
-    
-    let urlsArray: string[] = url.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
-    let addTagsArrayPerEntry: string[] | undefined = undefined;
-    if (stockOptionalOverrides.addTags.stringValue && stockOptionalOverrides.addTags.stringValue.value)
-    addTagsArrayPerEntry = stockOptionalOverrides.addTags.stringValue.value.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
-    let addidsArrayPerEntry: string[] | undefined = undefined;
-    if (stockOptionalOverrides.addId.stringValue && stockOptionalOverrides.addId.stringValue.value)
-    addidsArrayPerEntry = stockOptionalOverrides.addId.stringValue.value.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
-    let providedFileNamePerEntry: string[] | undefined = undefined;
-    
-    if (stockOptionalOverrides.useProvidedFileName.stringValue && stockOptionalOverrides.useProvidedFileName.stringValue.value)
-    providedFileNamePerEntry = stockOptionalOverrides.addId.stringValue.value.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
-    
-    let stockOptionalOverridesPerEntry: IPicFormStockOverrides = {
-      thumbnailFile: JSON.parse(JSON.stringify(stockOptionalOverrides.thumbnailFile)),
-      addId: JSON.parse(JSON.stringify(stockOptionalOverrides.addId)),
-      addTags: JSON.parse(JSON.stringify(stockOptionalOverrides.addTags)),
-      compileAllLinksIntoOneEntry: JSON.parse(JSON.stringify(stockOptionalOverrides.compileAllLinksIntoOneEntry)),
-      useProvidedFileName: JSON.parse(JSON.stringify(stockOptionalOverrides.useProvidedFileName)),
+  router.post("/add-pictures", upload.array("temp_download"), async (req, res) => {
+    let newEntries: IDBEntry[] = [];
+    const body: INewPic[] = JSON.parse(req.body.entries);
+
+    const filePathDict: {[name: string]: Express.Multer.File} = {}
+    const reqFiles: Express.Multer.File[] | undefined = req.files as  Express.Multer.File[] | undefined
+    const fileCount  = reqFiles?.length
+    if (reqFiles && fileCount) {
+      reqFiles.forEach(file => filePathDict[file.originalname] = file) 
     }
     
-    let addedPicsArray: IDBEntry[] = [];
-    let compiledEntry: INewPicture = {
-          data:{},
-          imagesDataArray:[],
-          indexer:0,
-          ids: {},
-          links: {},
-          isMultiSource: stockOptionalOverrides.compileAllLinksIntoOneEntry.checkBoxValue,
-        };
+    for (let newEntry = 0; newEntry < body.length; newEntry++) {
+      let addTagsArrayPerEntry: string[] | undefined = undefined;
+      let addidsArrayPerEntry: string[] | undefined = undefined;
+      let providedFileNamePerEntry: string[] | undefined = undefined;
+      let stockOptionalOverridesPerEntry: IPicFormStockOverrides | undefined;
+      const { url, album, type, files, isHidden, optionalOverrideParams, stockOptionalOverrides } = body[newEntry]; //remember to do .split('\n') and for each to get the stuff bla bla
+      if (stockOptionalOverrides) {
         
-    const forLoopPromise = new Promise<IDBEntry[]>(async (resolve, reject) => {
-      for (let i = 0; i < urlsArray.length; i++) {
-        const value = urlsArray[i];
-       setTimeout(() => {}, 10); //just wait a bit
-       if (stockOptionalOverridesPerEntry.addId.textField && addidsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addId.textField.value = addidsArrayPerEntry[ (i > addidsArrayPerEntry.length) ? (addidsArrayPerEntry.length - 1) : i];
-       if (stockOptionalOverridesPerEntry.addTags.textField && addTagsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addTags.textField.value = addTagsArrayPerEntry[ (i > addTagsArrayPerEntry.length) ? (addTagsArrayPerEntry.length - 1) : i];
-       if (stockOptionalOverridesPerEntry.useProvidedFileName.textField && providedFileNamePerEntry?.length) stockOptionalOverridesPerEntry.useProvidedFileName.textField.value = providedFileNamePerEntry[ (i > providedFileNamePerEntry.length) ? (providedFileNamePerEntry.length - 1) : i];
-
-        const entry = await logic.ProcessInput(value, type, album, optionalOverrideParams, stockOptionalOverridesPerEntry);
-        console.log(`${i} / ${urlsArray.length}`);
-        let hasVideo = false;
-        if (entry && entry.imagesDataArray?.length) {
-          hasVideo = !!entry.imagesDataArray.filter(fl => fl.isVideo).length
-
-          if (stockOptionalOverridesPerEntry.addTags.textField?.value) {
-            entry.tags = entry.tags ? [...entry.tags, ...(stockOptionalOverridesPerEntry.addTags.textField.value as any).replaceAll(' ', "").split(',')] : (stockOptionalOverridesPerEntry.addTags.textField.value as any).replaceAll(' ', "").split(',');
-          }
-
-          if (stockOptionalOverrides.compileAllLinksIntoOneEntry.checkBoxValue) {
-            compiledEntry.imagesDataArray = compiledEntry.imagesDataArray.concat(entry.imagesDataArray);
-            compiledEntry.urlsArray = entry.urlsArray ? compiledEntry.urlsArray?.concat(entry.urlsArray) : compiledEntry.urlsArray;
-            entry.ids ? Object.assign(compiledEntry.ids, {[i]:  entry.ids})      : {};
-            entry.links ? Object.assign(compiledEntry.links, {[i]:  entry.links}) : {};
-            compiledEntry.hasVideo = compiledEntry.hasVideo ?? hasVideo;
-            if (entry.tags) {
-              compiledEntry.tags = compiledEntry.tags ? compiledEntry.tags.concat(entry.tags) : entry.tags;
-            }
-     
-            if (entry.artists) {
-              compiledEntry.artists = compiledEntry.artists ? compiledEntry.artists.concat(entry.artists) : entry.artists
-            }
-            
-          } else {
-            await database.addEntry(album, {
-              ...entry,
-              isNSFW: entry.isNSFW ?? false,
-              id: uuidv4(),
-              hasVideo: hasVideo,
-              album: album,
-              date_added: (new Date()).getTime(),
-              isHidden: isHidden
-            }, type)
-            .then(res => addedPicsArray.push(res))
-            .catch(console.log)
-          }
+        if (stockOptionalOverrides.addTags.textField && stockOptionalOverrides.addTags.textField.value)
+        addTagsArrayPerEntry = stockOptionalOverrides.addTags.textField?.value.replaceAll(" ", "_").split("\n").filter( (a:string) => a != "");
+        if (stockOptionalOverrides.addId.textField && stockOptionalOverrides.addId.textField.value)
+        addidsArrayPerEntry = stockOptionalOverrides.addId.textField?.value.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
+        if (stockOptionalOverrides.useProvidedFileName.textField && stockOptionalOverrides.useProvidedFileName.textField.value)
+        providedFileNamePerEntry = stockOptionalOverrides.addId.textField?.value.replaceAll(" ", "_").split("\n").filter( (a:string) => a != "");
+        
+        stockOptionalOverridesPerEntry = {
+          thumbnailFile: JSON.parse(JSON.stringify(stockOptionalOverrides.thumbnailFile)),
+          addId: JSON.parse(JSON.stringify(stockOptionalOverrides.addId)),
+          addTags: JSON.parse(JSON.stringify(stockOptionalOverrides.addTags)),
+          compileAllLinksIntoOneEntry: JSON.parse(JSON.stringify(stockOptionalOverrides.compileAllLinksIntoOneEntry)),
+          useProvidedFileName: JSON.parse(JSON.stringify(stockOptionalOverrides.useProvidedFileName)),
         }
-        if (i == urlsArray.length - 1) {
-          if (stockOptionalOverrides.compileAllLinksIntoOneEntry.checkBoxValue) {      
-            await database.addEntry(album, {
-              ...compiledEntry,
-              isNSFW: compiledEntry.isNSFW ?? false,
-              id: uuidv4(),
-              hasVideo: hasVideo,
-              album: album,
-              date_added: (new Date()).getTime(),
-              isHidden: isHidden
-            }, type)
-            .then(res => addedPicsArray.push(res))
-            .catch(console.log)
-          }
-          resolve(addedPicsArray)
-        } 
       }
-    });
-    const resPromise = await forLoopPromise;
-    database.updateCountEntriesInAlbumByName(album)
-    res.status(200).json(resPromise)
+      
+      
+      let addedPicsArray: IDBEntry[] = [];
+      let compiledEntry: INewPicture = {
+            data:{},
+            imagesDataArray:[],
+            indexer:0,
+            ids: {},
+            links: {},
+            isMultiSource: stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue,
+          };
+          let arrayOfInputs: string[] = [];
+          if (url) {
+            arrayOfInputs = url.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
+          } else if (files) arrayOfInputs = files.map(file => filePathDict[file].path)
+      if (arrayOfInputs) {
+        
+        const forLoopPromise = new Promise<IDBEntry[]>(async (resolve, reject) => {
+          for (let i = 0; i < arrayOfInputs.length; i++) {
+            const value = arrayOfInputs[i];
+           await new Promise<void>((resolve, reject) => setTimeout(() => {resolve()}, 100)) //just wait a bit
+           if (stockOptionalOverridesPerEntry) {
+            
+             if (stockOptionalOverridesPerEntry.addId.textField && addidsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addId.textField.value = addidsArrayPerEntry[ (i > addidsArrayPerEntry.length) ? (addidsArrayPerEntry.length - 1) : i];
+             if (stockOptionalOverridesPerEntry.addTags.textField && addTagsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addTags.textField.value = addTagsArrayPerEntry[ (i > addTagsArrayPerEntry.length) ? (addTagsArrayPerEntry.length - 1) : i];
+             if (stockOptionalOverridesPerEntry.useProvidedFileName.textField && providedFileNamePerEntry?.length) stockOptionalOverridesPerEntry.useProvidedFileName.textField.value = providedFileNamePerEntry[ (i > providedFileNamePerEntry.length) ? (providedFileNamePerEntry.length - 1) : i];
+             
+            }
+            const entry = await logic.ProcessInput(value, type, album, optionalOverrideParams ?? {}, stockOptionalOverridesPerEntry as IPicFormStockOverrides);
+            console.log(`${i} / ${arrayOfInputs.length}`);
+            let hasVideo = false;
+            if (entry && entry.imagesDataArray?.length) {
+              hasVideo = !!entry.imagesDataArray.filter(fl => fl.isVideo).length
+    
+              if (stockOptionalOverridesPerEntry?.addTags.textField?.value) {
+                entry.tags = entry.tags ? [...entry.tags, ...(stockOptionalOverridesPerEntry.addTags.textField.value as any).replaceAll(' ', "").split(',')] : (stockOptionalOverridesPerEntry.addTags.textField.value as any).replaceAll(' ', "").split(',');
+              }
+    
+              if (stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue) {
+                compiledEntry.imagesDataArray = compiledEntry.imagesDataArray.concat(entry.imagesDataArray);
+                compiledEntry.urlsArray = entry.urlsArray ? compiledEntry.urlsArray?.concat(entry.urlsArray) : compiledEntry.urlsArray;
+                entry.ids ? Object.assign(compiledEntry.ids, {[i]:  entry.ids})      : {};
+                entry.links ? Object.assign(compiledEntry.links, {[i]:  entry.links}) : {};
+                compiledEntry.hasVideo = compiledEntry.hasVideo ?? hasVideo;
+                if (entry.tags) {
+                  compiledEntry.tags = compiledEntry.tags ? compiledEntry.tags.concat(entry.tags) : entry.tags;
+                }
+         
+                if (entry.artists) {
+                  compiledEntry.artists = compiledEntry.artists ? compiledEntry.artists.concat(entry.artists) : entry.artists
+                }
+                
+              } else {
+                await database.addEntry(album, {
+                  ...entry,
+                  isNSFW: entry.isNSFW ?? false,
+                  id: uuidv4(),
+                  hasVideo: hasVideo,
+                  album: album,
+                  date_added: (new Date()).getTime(),
+                  isHidden: !!isHidden
+                }, type)
+                .then(res => addedPicsArray.push(res))
+                .catch(console.log)
+              }
+            }
+            if (i == arrayOfInputs.length - 1) {
+              if (stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue) {      
+                await database.addEntry(album, {
+                  ...compiledEntry,
+                  isNSFW: compiledEntry.isNSFW ?? false,
+                  id: uuidv4(),
+                  hasVideo: hasVideo,
+                  album: album,
+                  date_added: (new Date()).getTime(),
+                  isHidden: !!isHidden
+                }, type)
+                .then(res => addedPicsArray.push(res))
+                .catch(console.log)
+              }
+              resolve(addedPicsArray)
+            } 
+          }
+        });
+        const resPromise = await forLoopPromise;
+        newEntries.push(...resPromise);
+      }
+      database.updateCountEntriesInAlbumByName(album)
+    }
+    res.status(200).json(newEntries)
     //database.updateCountEntriesInAlbumByName(album)
   });
 
@@ -296,9 +320,9 @@ router.post(
       }
     } else settings.database_url.checkBox = {checkBoxValue: false, defaultValue: false, checkBoxDescription: ""}
     
-      settings.stock_settings = responseSettings.stock_settings;
-      const arrayLength = logic.specialSettingValidityCheck.length;
-      if ((settings.special_params && errorsObject.responseSettings.special_params) && (settings.special_settings && errorsObject.responseSettings.special_settings)) {
+    settings.stock_settings = responseSettings.stock_settings;
+    const arrayLength = logic.specialSettingValidityCheck.length;
+    if (logic.specialSettingValidityCheck.length && (settings.special_params && errorsObject.responseSettings.special_params) && (settings.special_settings && errorsObject.responseSettings.special_settings)) {
         const validityCheckLoop = new Promise(async (resolve, reject) => {
           logic.specialSettingValidityCheck.forEach(async (checkFunc, index) => {
             const param = recursiveObjectIndex<IParam>(errorsObject.responseSettings, checkFunc.indexer);
@@ -339,7 +363,7 @@ router.post(
 
   router.delete('/delete-entry-by-id', async (req, res) => {
     const { album, entriesIDs } = req.body      
-    database.deleteEntries(album, entriesIDs);
+    await database.deleteEntries(album, entriesIDs);
     database.updateCountEntriesInAlbumByName(album)
   })
 

@@ -1,5 +1,6 @@
+import { ReadStream } from "fs";
 import Utility from "src/Utility";
-import { ILogicModels, ILogicCategorySpecialParamsDictionary, IModelDictionary, INewPicture, IPicFormStockOverrides, ISettings, IProcessDictionary } from "types";
+import { ILogicModels, ILogicCategorySpecialParamsDictionary, IModelDictionary, INewPicture, IPicFormStockOverrides, ISettings, IProcessDictionary, IModelSpecialParam } from "types";
 
 export default class LogicModel implements ILogicModels {
     public processDictionary: IProcessDictionary;
@@ -15,7 +16,7 @@ export default class LogicModel implements ILogicModels {
         }
       }
     }
-    public async ProcessInput(input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides:IPicFormStockOverrides){
+    public async ProcessInput(input: string | File | ReadStream, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides:IPicFormStockOverrides){
         let resultantData: INewPicture | undefined = {
             data: {},
             indexer: 0,
@@ -35,7 +36,7 @@ export default class LogicModel implements ILogicModels {
         return resultantData;
     }
 
-    private async processUrl(url: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides, type: string)  {
+    private async processUrl(url: string, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides, type: string)  {
         //i need to do something about thumbnails
       const imageProps = type == 'image' ? await this.utility.getImageResolution(url) : undefined; // i need to fix this to support video      
         let resultantData: INewPicture | undefined = {
@@ -52,12 +53,12 @@ export default class LogicModel implements ILogicModels {
               width: imageProps?.imageSize.width || 0 
           }],
         };
-        const parsedTrueURL = url.substring(0, url.indexOf('?'));
+        const parsedTrueURL = url.includes("?") ? url.substring(0, url.indexOf('?')) : url;
+
         
-        const parse_regex = new RegExp(String.raw `\/.*\/(?<fileName>.*)\.(?<fileExtension>.*)`)
-        const parseResult = parsedTrueURL.match(parse_regex)?.groups
-        const providedFileName = (parseResult?.fileName ?? parsedTrueURL.substring(parsedTrueURL.lastIndexOf('/') + 1, parsedTrueURL.indexOf('.'))) + `- ${Date.now()}`
-        const providedFileExtension = parseResult?.fileExtension ?? parsedTrueURL.substring(parsedTrueURL.indexOf('.') + 1)
+        const providedFileName = (parsedTrueURL.substring(parsedTrueURL.lastIndexOf('/') + 1, parsedTrueURL.lastIndexOf('.'))) + `- ${Date.now()}`
+        const providedFileExtension = parsedTrueURL.substring(parsedTrueURL.lastIndexOf('.') + 1)
+        
         const path = await this.utility.downloadFromUrl(parsedTrueURL, this.settings.downloadFolder, `/saved_pictures/${album}`, {
           providedFileName: providedFileName, providedFileExtension: providedFileExtension
         })

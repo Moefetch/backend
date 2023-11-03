@@ -176,11 +176,25 @@ export interface IModelSpecialParam {
     }
 };
  */
+
+export interface IReqFile {
+    fieldname: string
+    originalname: string
+    encoding: string
+    mimetype: string
+    destination: string
+    filename: string
+    path: string
+    size: number
+  }
+
+  
 export interface IParam {
     category?: string; //if undefined it's a global setting for all categories
     hostname?: string; //if undefined it's a category specific setting
     type: string; //cookie, setting, default parameter etc, use case would to to group settings later
     valueType: "checkBox" | "textField" | "both"
+    useTextArea?: boolean;
     checkBox?: {
         checkBoxValue: boolean;
         checkBoxDescription: string;
@@ -207,8 +221,8 @@ export interface IModelSpecialParam {
 }
 export interface IProcessDictionary {
         [category: string]: { //undefined is for wildcard functions, gets access to other processing functions within same category
-            [hostname: string]: undefined | ((inputUrl: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewPicture | undefined>);
-            undefined?: (inputUrl: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides, processDictionary?: IProcessDictionary[string]) => Promise<INewPicture | undefined>;
+            [hostname: string]: undefined | ((inputUrl: string, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewPicture | undefined>);
+            undefined?: (inputUrl: string | File | ReadStream, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides, processDictionary?: IProcessDictionary[string]) => Promise<INewPicture | undefined>;
         }
     }
 
@@ -276,6 +290,20 @@ export interface ILogicCategory {
     ProcessInput: (input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewPicture | undefined>
 
 }
+
+export interface INewPic {
+    files?: string[];
+    old_file?: string;
+    thumbnail_file?: string;
+    url: string;
+    optionalOverrideParams?: IModelSpecialParam;
+    stockOptionalOverrides?: IPicFormStockOverrides;
+    has_results?: boolean;
+    type: AlbumSchemaType;
+    album: string;
+    isHidden?: boolean;
+  }
+  
 
 export interface INewPicture {
     //for mongo compatablity 
@@ -550,6 +578,7 @@ export interface IPixivTag {
     enTranslation?: string;
 }
 import type {ISetting} from "./settings";
+import { ReadStream } from "fs";
 export type ISettings = ISetting;
 
 export type OutgoingHttpHeader = number | string | string[];

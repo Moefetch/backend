@@ -28,6 +28,13 @@ export default class Utility {
       })
       if (res.statusText == "OK") return res.blob().then((blob) => blob.type).then(type => type.substring(0, type.indexOf('/')))
     }
+
+    /**
+     * DEPRICATED??
+     * @param settings 
+     * @param categoryFolder 
+     * @returns 
+     */
   public loadModels(settings: ISettings, categoryFolder: string) {
     let specialSettingValidityCheckArray: IParamValidityCheck[] = [];
     let specialSettingsDictionary: IModelSpecialParam = {}
@@ -89,7 +96,7 @@ export default class Utility {
   }
 
   public defaultHeaders: Headers = new Headers({
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/112.0",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/118.0",
     "Accept": "*/*",
     "Accept-Language": "en-US,en;q=0.5",
     'accept-encoding': 'gzip, deflate, br',
