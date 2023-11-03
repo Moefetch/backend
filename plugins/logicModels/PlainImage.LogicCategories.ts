@@ -1,4 +1,4 @@
-import { ReadStream } from "fs";
+import fs, { ReadStream } from "fs";
 import Utility from "src/Utility";
 import { ILogicModels, ILogicCategorySpecialParamsDictionary, IModelDictionary, INewPicture, IPicFormStockOverrides, ISettings, IProcessDictionary, IModelSpecialParam } from "types";
 
@@ -16,7 +16,7 @@ export default class LogicModel implements ILogicModels {
         }
       }
     }
-    public async ProcessInput(input: string | File | ReadStream, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides:IPicFormStockOverrides){
+    public async ProcessInput(input: string | Express.Multer.File, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides:IPicFormStockOverrides){
         let resultantData: INewPicture | undefined = {
             data: {},
             indexer: 0,
@@ -24,14 +24,21 @@ export default class LogicModel implements ILogicModels {
             imagesDataArray: []
           };
           
-          if (typeof input == "string"){
+          if (typeof input == "string" && ~input.search(/^https?:\/\//)){
             const type = await this.utility.getTypeFromUrl(input);
             if(type) {
                 resultantData = await this.processUrl(input, album, optionalOverrideParams, stockOptionalOverrides, type);
             } else return undefined
           }
-          else { //process as a file not a link
-            resultantData = {data: {}, indexer: 0, imagesDataArray: []} // i need to make it download and add as is cus no processing
+          else if (!(typeof input == "string")) { //process as a file not a link
+            let newPath = `${this.settings.downloadFolder}/saved_pictures/${album}/${input.path.substring(input.path.lastIndexOf("/") + 1)}`;
+            this.utility.moveFile(input.path, newPath);
+            console.log(newPath);
+            newPath = newPath.substring(newPath.indexOf('/saved_pictures/'));
+            const isVideo = input.mimetype.includes("video");
+            resultantData = {
+              data: {}, indexer: 0, imagesDataArray: [{file: newPath, isVideo: isVideo, thumbnail_file: newPath}], hasVideo: isVideo, thumbnailFile: newPath 
+            }
           }
         return resultantData;
     }

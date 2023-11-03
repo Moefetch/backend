@@ -132,9 +132,9 @@ router.post(
     const reqFiles: Express.Multer.File[] | undefined = req.files as  Express.Multer.File[] | undefined
     const fileCount  = reqFiles?.length
     if (reqFiles && fileCount) {
-      reqFiles.forEach(file => filePathDict[file.originalname] = file) 
+      reqFiles.forEach(file => filePathDict[file.originalname] = file)
     }
-    
+
     for (let newEntry = 0; newEntry < body.length; newEntry++) {
       let addTagsArrayPerEntry: string[] | undefined = undefined;
       let addidsArrayPerEntry: string[] | undefined = undefined;
@@ -169,10 +169,10 @@ router.post(
             links: {},
             isMultiSource: stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue,
           };
-          let arrayOfInputs: string[] = [];
+          let arrayOfInputs: string[] | Express.Multer.File[] = [];
           if (url) {
             arrayOfInputs = url.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
-          } else if (files) arrayOfInputs = files.map(file => filePathDict[file].path)
+          } else if (files) arrayOfInputs = files.map(file => filePathDict[file])
       if (arrayOfInputs) {
         
         const forLoopPromise = new Promise<IDBEntry[]>(async (resolve, reject) => {

@@ -23,10 +23,10 @@ export class Logic {
     /**
      * ProcessInput
      */
-    public async ProcessInput(input: string | File, type: string, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides) {
+    public async ProcessInput(input: string | Express.Multer.File, type: string, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides) {
         let categoryDictionary = this.categoryDictionary[type]
         let resultantData: INewPicture | undefined;
-        let inputToProcess: string | File | ReadStream | undefined = undefined;
+        let inputToProcess: string | Express.Multer.File | undefined = undefined;
         if (typeof input == "string" && ~input.search(/^https?:\/\//)) { // string mught be path
             const {hostname} = new URL(input)
             const processFunc = categoryDictionary[hostname]
@@ -62,9 +62,9 @@ export class Logic {
                 
             } //else if (!resultantData.thumbnailFile && !resultantData.imagesDataArray[resultantData.indexer].isVideo && !resultantData.imagesDataArray[resultantData.indexer].thumbnail_file) resultantData.thumbnailURL = resultantData.imagesDataArray[resultantData.indexer].file
             else resultantData.thumbnailURL = resultantData.imagesDataArray[resultantData.indexer].thumbnail_file
-
-            return resultantData;
         }
+
+        if (resultantData?.imagesDataArray.length) return resultantData
 
     }    
 

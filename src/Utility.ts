@@ -184,6 +184,31 @@ export default class Utility {
     return (await this.request(imageUrl, "GET", options)).statusText == "OK";
   }
 
+  /**
+   * moveFile
+   */
+  public moveFile(filePath: string, newPath: string) {
+    fs.access(filePath, () => {
+      fs.access(newPath, () => {
+        fs.copyFile(filePath, newPath, (err) => {
+          if (err) {
+            console.log(err);
+          } else {
+            fs.unlink(filePath, () => {})
+          }
+        })
+      })
+    })
+  }
+
+/**
+ * deleteFile
+ */
+public deleteFile(path: string) {
+  fs.access(path, () => {
+    fs.unlink(path, () => {})
+  })
+}
   public async compareImgSizes(img1: string, img2: string) {
     const img1Res = await this.getImageResolution(img1);
     const img2Res = await this.getImageResolution(img2);

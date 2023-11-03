@@ -222,7 +222,7 @@ export interface IModelSpecialParam {
 export interface IProcessDictionary {
         [category: string]: { //undefined is for wildcard functions, gets access to other processing functions within same category
             [hostname: string]: undefined | ((inputUrl: string, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewPicture | undefined>);
-            undefined?: (inputUrl: string | File | ReadStream, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides, processDictionary?: IProcessDictionary[string]) => Promise<INewPicture | undefined>;
+            undefined?: (inputUrl: string | Express.Multer.File, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides, processDictionary?: IProcessDictionary[string]) => Promise<INewPicture | undefined>;
         }
     }
 
