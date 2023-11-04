@@ -6,3 +6,4 @@ dist-ssr
 settings.json
 test.ts
 image.svg
+!/plugins/logicModels/PlainImage.LogicCategories.ts
