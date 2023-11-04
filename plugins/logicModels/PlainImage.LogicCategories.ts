@@ -36,8 +36,9 @@ export default class LogicModel implements ILogicModels {
             console.log(newPath);
             newPath = newPath.substring(newPath.indexOf('/saved_pictures/'));
             const isVideo = input.mimetype.includes("video");
+            const thumbnail_file = isVideo ? "album_thumbnail_files/video.svg" : newPath
             resultantData = {
-              data: {}, indexer: 0, imagesDataArray: [{file: newPath, isVideo: isVideo, thumbnail_file: newPath}], hasVideo: isVideo, thumbnailFile: newPath 
+              data: {}, indexer: 0, imagesDataArray: [{file: newPath, isVideo: isVideo, thumbnail_file: thumbnail_file}], hasVideo: isVideo, thumbnailFile: thumbnail_file 
             }
           }
         return resultantData;
