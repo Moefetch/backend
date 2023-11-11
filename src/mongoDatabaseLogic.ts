@@ -152,7 +152,7 @@ public async getAlbums(showHidden: boolean) {
     const newModelEntry = modelsDictionary(album.name);  
     const newNumOfPic = await newModelEntry.countDocuments();
     album.estimatedPicCount = newNumOfPic;
-    album.update()
+    album.updateOne()
     })
   }
 

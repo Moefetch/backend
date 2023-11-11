@@ -1,4 +1,4 @@
-[submodule "plugins/logicModels"]
+[submodule "logicModels"]
     path = plugins/logicModels
-    url = https://github.com/Moefetch/pluginModules.git
+    url = https://github.com/Moefetch/logicModels.git
 

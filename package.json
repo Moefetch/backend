@@ -25,7 +25,7 @@
     "express": "^4.17.2",
     "file-type": "^16.5.3",
     "form-data": "^4.0.0",
-    "mongoose": "^6.0.13",
+    "mongoose": "^8.0.0",
     "multer": "^1.4.4",
     "nedb": "^1.8.0",
     "probe-image-size": "^7.2.3",
