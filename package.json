@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "dev": "ts-node makeSureMongoDbIsRunning.ts || start_mongodb.bat.lnk & ts-node index.ts",
-    "buildWin": "tsc -p tsconfig.json & copy package.json dist & cd dist & pkg package.json & xcopy src\\Logic dist\\src\\Logic /i /s",
-    "buildLinux": "tsc -p tsconfig.json; cp package.json dist/package.json; cd dist; pkg package.json; mkdir dist/src; cp -r src/Logic dist/src/Logic"
+    "dev": "ts-node makeSureMongoDbIsRunning.ts || start_mongodb.bat.lnk & cross-env NODE_ENV=development ts-node index.ts",
+    "buildWin": "tsc -p tsconfig.json & copy package.json dist & cd dist & pkg package.json",
+    "buildLinux": "tsc -p tsconfig.json; cp package.json dist/package.json; cd dist; cross-env NODE_ENV=build pkg package.json; mkdir dist/src;"
   },
   "author": "",
   "license": "ISC",
@@ -15,7 +15,8 @@
     "@types/multer": "^1.4.7",
     "@types/nedb": "^1.8.12",
     "@types/node": "^16.11.9",
-    "@types/uuid": "^8.3.4"
+    "@types/uuid": "^8.3.4",
+    "cross-env": "^7.0.3"
   },
   "dependencies": {
     "@types/probe-image-size": "^7.2.0",
@@ -28,6 +29,7 @@
     "mongoose": "^8.0.0",
     "multer": "^1.4.4",
     "nedb": "^1.8.0",
+    "pkg": "^5.8.1",
     "probe-image-size": "^7.2.3",
     "ts-node": "^10.9.1",
     "typescript": "^4.6.4",

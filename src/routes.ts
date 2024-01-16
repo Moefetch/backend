@@ -3,7 +3,7 @@ import express from "express";
 import { IReqFile, AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, INewPic, INewPicture, IParam, IPicFormStockOverrides, ISettings } from "types";
 import fs from "fs";
 import MongoDatabaseLogic from "./mongoDatabaseLogic";
-import {Logic} from "./Logic/Logic"
+import {Logic} from "./Logic"
 import NeDBDatabaseLogic from "./nedbDatabaseLogic";
 import settings from "../settings";
 import { upload } from "../middlewares/upload";
@@ -86,12 +86,12 @@ function saveSettings() {
   fs.writeFileSync(process.env.baseDir || '.' + "/settings.json", JSON.stringify(settings, null, 2));
   logic = new Logic(settings);
 }
-
+/* 
 router.use((req, res, next) => {
-    console.log('Time: ', Date.now())
-    next()
+  console.log('Time: ', Date.now(), req.url)
+  next()
 })
-
+ */
 router.post(
     "/create-album",
     upload.single("album_thumbnail_file"),

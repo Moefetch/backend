@@ -1,5 +1,6 @@
-process.env.DEV = "true";
-process.env.EXTENSION = process.env.DEV ? ".ts" : ".js";
+console.log(process.env.NODE_ENV);
+
+process.env.EXTENSION = process.env.NODE_ENV == "development" ? ".ts" : ".js";
 process.env.__dirname = process.cwd();
 
 

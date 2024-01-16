@@ -504,8 +504,11 @@ export interface IInstagramResponse_edges {
 
 export interface IInstagramCookieOBJ {
     csrf_token: string;
+    datr: string;
+    ig_did: string;
+    ig_nrcb: string;
+    mid: string;
     app_id: string;
-    device_id: string;
     ASBD_ID: string;
 }
 

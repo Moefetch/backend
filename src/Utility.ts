@@ -1,5 +1,6 @@
 import fs from "fs";
 import probeImageSize from "probe-image-size";
+
 import { IImageProps, INewPicture, OutgoingHttpHeaders, ISettings, ILogicCategorySpecialSettingsDictionary, ILogicModel,  ILogicCategorySpecialParamsDictionary, IModelDictionary, ILogicCategory, ILogicModelConstructor, IParamValidityCheck, IModelSpecialParam } from "../types";
 import needle from "needle";
 
@@ -100,7 +101,6 @@ export default class Utility {
     "Accept": "*/*",
     "Accept-Language": "en-US,en;q=0.5",
     'accept-encoding': 'gzip, deflate, br',
-    "connection": 'keep-alive',
     "Sec-Fetch-Dest": "document",
     "Sec-Fetch-Mode": "navigate",
     "Sec-Fetch-Site": "none",
@@ -109,6 +109,22 @@ export default class Utility {
     "Cache-Control": "no-cache",
 
   })
+
+  /**
+   * randomString
+   */
+  public randomString(length: number) {
+    let result = '';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const charactersLength = characters.length;
+    let counter = 0;
+    while (counter < length) {
+      result += characters.charAt(Math.floor(Math.random() * charactersLength));
+      counter += 1;
+    }
+    return result;
+  }
+
   public request(
     element: string,
     requestMethod: "GET" | "POST",
@@ -117,7 +133,7 @@ export default class Utility {
       altUsed?: string;
       providedHeaders?: RequestInit;
     }
-  ) {
+  ):Promise<Response> {
     let headers  = new Headers(this.defaultHeaders);
     
     options?.referrer ? headers.set("referrer", options?.referrer ) : {};
@@ -131,11 +147,21 @@ export default class Utility {
     
     if (options && options.referrer) headersObj["referrer"] = options.referrer;
 
-    return fetch(element, headersObj).catch((err) => {
-      console.log("fetch request error while downloading ", element, 'err', err);
-
-      //literally just retry 
-      return fetch(element, headersObj);
+    /* let axiosInstance =axios.create({
+      url:element, headers: headersObj
+    })
+    axios.request({url: element, headers: headersObj}) */
+    return fetch(element, headersObj).catch(async (err) => {
+      console.log("first fetch request error while downloading ", element, 'err', err);
+      //wait 500 ms
+      await (new Promise(async (resolve, reject) => {setTimeout(() => {
+        resolve(undefined);
+      }, 500);}))
+      //retry uncomment when you are ready to handle errors
+      return fetch(element, headersObj)/* .catch((err) => {
+        console.log("second attempt failed while downloading ", element, 'err', err);
+        return undefined
+      }) */
     });
   }
   
@@ -224,7 +250,10 @@ public deleteFile(path: string) {
    * @param image path string to file / could take in a url aswell but idk
    */
 
-  public async getImageResolution(image: string | NodeJS.ReadableStream) {
+  public async getImageResolution(image: string | NodeJS.ReadableStream, optional?: {
+    useOwnUrlReferer: boolean,
+  }) {
+    
     let imageProps: IImageProps;
     if (typeof image == "string") {
       if (!(await this.checkImageUrlValid(image))) return undefined;
@@ -232,27 +261,26 @@ public deleteFile(path: string) {
         async (resolve, reject) => {
           if (~image.search(/^https?:\/\//)) {
             const urlParsed = new URL(image);
-
-            const requestHeaders: OutgoingHttpHeaders = {
+            const requestHeaders: any = {
               Accept: "image/avif,image/webp",
               "Accept-Language": "en-US,en;q=0.5",
               "Accept-Encoding": "gzip, deflate, br",
-              DNT: 1,
-              Connection: "keep-alive",
-              Referer: `${urlParsed.protocol}//${urlParsed.hostname}/`,
+              "DNT": '1',
+              "Connection": "keep-alive",
               "Sec-Fetch-Dest": "image",
               "Sec-Fetch-Mode": "no-cors",
               "Sec-Fetch-Site": "cross-site",
               "Sec-GPC": "1",
-              Pragma: "no-cache",
+              "Pragma": "no-cache",
               "Cache-Control": "no-cache",
-              TE: "trailers",
+              "TE": "trailers",
             };
-
+            optional?.useOwnUrlReferer && (requestHeaders.Referer =  `${urlParsed.protocol}//${urlParsed.hostname}/`)
             const options: needle.NeedleOptions = {
+              'accept': "image/avif,image/webp",
               headers: requestHeaders,
             };
-
+            
             imageProps = {
               imageSize: await probeImageSize(image, options),
               protocol: "https:",
