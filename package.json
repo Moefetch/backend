@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "ts-node makeSureMongoDbIsRunning.ts || start_mongodb.bat.lnk & cross-env NODE_ENV=development ts-node index.ts",
     "buildWin": "tsc -p tsconfig.json & copy package.json dist & cd dist & pkg package.json",
-    "buildLinux": "tsc -p tsconfig.json; cp package.json dist/package.json; cd dist; cross-env NODE_ENV=build pkg package.json; mkdir dist/src;"
+    "buildLinux": "tsc -p tsconfig.json; cp package.json dist/package.json; cd dist; cross-env NODE_ENV=build pkg package.json; mkdir dist/src;",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "author": "",
   "license": "ISC",
@@ -16,7 +19,8 @@
     "@types/nedb": "^1.8.12",
     "@types/node": "^16.11.9",
     "@types/uuid": "^8.3.4",
-    "cross-env": "^7.0.3"
+    "cross-env": "^7.0.3",
+    "vitepress": "^1.2.3"
   },
   "dependencies": {
     "@types/probe-image-size": "^7.2.0",

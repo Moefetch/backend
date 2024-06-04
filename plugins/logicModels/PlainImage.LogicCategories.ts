@@ -67,7 +67,7 @@ export default class LogicModel implements ILogicModels {
         const providedFileName = (parsedTrueURL.substring(parsedTrueURL.lastIndexOf('/') + 1, parsedTrueURL.lastIndexOf('.'))) + `- ${Date.now()}`
         const providedFileExtension = parsedTrueURL.substring(parsedTrueURL.lastIndexOf('.') + 1)
         
-        const path = await this.utility.downloadFromUrl(parsedTrueURL, this.settings.downloadFolder, `/saved_pictures/${album}`, {
+        const path = await this.utility.downloadFromUrl(url, this.settings.downloadFolder, `/saved_pictures/${album}`, {
           providedFileName: providedFileName, providedFileExtension: providedFileExtension
         })
         resultantData.imagesDataArray = [{

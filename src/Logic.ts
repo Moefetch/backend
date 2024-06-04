@@ -64,18 +64,16 @@ export class Logic {
             else resultantData.thumbnailURL = resultantData.imagesDataArray[resultantData.indexer].thumbnail_file
         }
 
-        if (resultantData?.imagesDataArray.length) return resultantData
+        if (resultantData?.imagesDataArray?.length) return resultantData
 
     }    
 
     private loadLogicModules() {
         const categoryDictionary: IProcessDictionary = {};
         const settingsDictionary: IModelSpecialParam = {}
-        const paramsDictionary: IModelSpecialParam = {}
-        console.log(process.env.EXTENSION ?? "js");
+        const paramsDictionary: IModelSpecialParam = {};
         
         const logicModules = fs.readdirSync('./plugins/logicModels/').filter(file => file.endsWith(process.env.EXTENSION ?? "js"))
-        console.log(logicModules);
         
         logicModules.forEach(category => {
             const logicModule = require(`../plugins/logicModels/${category.substring(0, category.lastIndexOf('.'))}`);

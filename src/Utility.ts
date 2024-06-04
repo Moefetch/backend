@@ -107,7 +107,6 @@ export default class Utility {
     "DNT": "1",
     "Sec-GPC": "1",
     "Cache-Control": "no-cache",
-
   })
 
   /**

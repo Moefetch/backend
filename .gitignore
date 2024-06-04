@@ -6,4 +6,7 @@ dist-ssr
 settings.json
 test.ts
 image.svg
+plugins/
 !/plugins/logicModels/PlainImage.LogicCategories.ts
+/docs/.vitepress/cache
+/docs/.vitepress/dist
