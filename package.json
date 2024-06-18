@@ -8,7 +8,8 @@
     "buildLinux": "tsc -p tsconfig.json; cp package.json dist/package.json; cd dist; cross-env NODE_ENV=build pkg package.json; mkdir dist/src;",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "startMongoDBLinux": "service mongod start"
   },
   "author": "",
   "license": "ISC",
@@ -30,12 +31,16 @@
     "express": "^4.17.2",
     "file-type": "^16.5.3",
     "form-data": "^4.0.0",
+    "mongodb": "^5.9.2",
     "mongoose": "^8.0.0",
     "multer": "^1.4.4",
     "nedb": "^1.8.0",
     "pkg": "^5.8.1",
     "probe-image-size": "^7.2.3",
+    "reflect-metadata": "^0.2.2",
+    "sqlite3": "^5.1.7",
     "ts-node": "^10.9.1",
+    "typeorm": "^0.3.20",
     "typescript": "^4.6.4",
     "uuid": "^8.3.2"
   },

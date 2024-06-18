@@ -60,7 +60,7 @@ export interface IAlbumDictionaryItemMongo extends mongoose.Document {
 export type AlbumSchemaType = string;
 
 export interface IAlbumDictionaryItem {
-    _id?: string;
+    id?: string;
     albumCoverImage: string | File;
     name: string;
     uuid: string;

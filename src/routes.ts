@@ -1,3 +1,4 @@
+import "reflect-metadata" //for typeORM
 import { v4 as uuidv4 } from "uuid";
 import express from "express";
 import { IReqFile, AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, INewPic, INewPicture, IParam, IPicFormStockOverrides, ISettings } from "types";
@@ -5,6 +6,7 @@ import fs from "fs";
 import MongoDatabaseLogic from "./mongoDatabaseLogic";
 import {Logic} from "./Logic"
 import NeDBDatabaseLogic from "./nedbDatabaseLogic";
+import { TypeORMInterface } from "./typeORMDatabaseLogic";
 import settings from "../settings";
 import { upload } from "../middlewares/upload";
 import { isDeepStrictEqual } from "util";
@@ -76,9 +78,19 @@ for (const param in defaultSpecialSettingsOrParams) {
 compareSpecialSettingsToDefault(settings, "special_params", logic.specialParamsDictionary ?? {})
 compareSpecialSettingsToDefault(settings, "special_settings", logic.specialSettingsDictionary ?? {});
 saveSettings()
+const databaseConnectionOptionsDefault = {
+  type: "sqlite",
+  database: "database.sqlite",
+  synchronize: true,
+  logging: false,
+  entities: [],
+  migrations: [],
+  subscribers: [],
+}
 
-const database = (settings.database_url.checkBox?.checkBoxValue && settings.database_url.textField?.value) ? (new MongoDatabaseLogic(settings.database_url.textField.value, logic.supportedTypes)) : (new NeDBDatabaseLogic(logic.supportedTypes)) ;
-database.updateCountEntriesInAllAlbums()
+const databasePromise = TypeORMInterface.init(databaseConnectionOptionsDefault);
+
+//const database = (settings.database_url.checkBox?.checkBoxValue && settings.database_url.textField?.value) ? (new MongoDatabaseLogic(settings.database_url.textField.value, logic.supportedTypes)) : (new NeDBDatabaseLogic(logic.supportedTypes)) ;
  
 const router = express.Router();
 
@@ -92,308 +104,313 @@ router.use((req, res, next) => {
   next()
 })
  */
-router.post(
-    "/create-album",
-    upload.single("album_thumbnail_file"),
-    async (req, res) => {
-      const { type, name, isHidden } = req.body;
-      let album_thumbnail_files;
-      const newAlbum: IAlbumDictionaryItem = {
-        name: name as string,
-        albumCoverImage: "album_thumbnail_files/image.svg",
-        type: type as AlbumSchemaType,
-        uuid: uuidv4(),
-        estimatedPicCount: 0,
-        isHidden: !!isHidden,
-      };
-      if (req.file) {
-        album_thumbnail_files = req.file as Express.Multer.File;
-        newAlbum.albumCoverImage = album_thumbnail_files.filename;
-      }
+export async function initialize() {
+  const database = await databasePromise;
+  database.updateCountEntriesInAllAlbums()
 
-      database.createAlbum(newAlbum);
-
-      res.status(200).json(newAlbum);
-    }
-  );
-  router.post("/force-save", async (req, res) => {
-    console.log(req);
-    return res.status(200).json({ sex: "sex" });
-  });
-  router.post("/check-status", async (req, res) => {
-    return res.status(200).json({ sex: "sex" });
-  });
-
-  router.post("/add-pictures", upload.array("temp_download"), async (req, res) => {
-    let newEntries: IDBEntry[] = [];
-    const body: INewPic[] = JSON.parse(req.body.entries);
-
-    const filePathDict: {[name: string]: Express.Multer.File} = {}
-    const reqFiles: Express.Multer.File[] | undefined = req.files as  Express.Multer.File[] | undefined
-    const fileCount  = reqFiles?.length
-    if (reqFiles && fileCount) {
-      reqFiles.forEach(file => filePathDict[file.originalname] = file)
-    }
-
-    for (let newEntry = 0; newEntry < body.length; newEntry++) {
-      let addTagsArrayPerEntry: string[] | undefined = undefined;
-      let addidsArrayPerEntry: string[] | undefined = undefined;
-      let providedFileNamePerEntry: string[] | undefined = undefined;
-      let stockOptionalOverridesPerEntry: IPicFormStockOverrides | undefined;
-      const { url, album, type, files, isHidden, optionalOverrideParams, stockOptionalOverrides } = body[newEntry]; //remember to do .split('\n') and for each to get the stuff bla bla
-      if (stockOptionalOverrides) {
-        
-        if (stockOptionalOverrides.addTags.textField && stockOptionalOverrides.addTags.textField.value)
-        addTagsArrayPerEntry = stockOptionalOverrides.addTags.textField?.value.replaceAll(" ", "_").split("\n").filter( (a:string) => a != "");
-        if (stockOptionalOverrides.addId.textField && stockOptionalOverrides.addId.textField.value)
-        addidsArrayPerEntry = stockOptionalOverrides.addId.textField?.value.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
-        if (stockOptionalOverrides.useProvidedFileName.textField && stockOptionalOverrides.useProvidedFileName.textField.value)
-        providedFileNamePerEntry = stockOptionalOverrides.addId.textField?.value.replaceAll(" ", "_").split("\n").filter( (a:string) => a != "");
-        
-        stockOptionalOverridesPerEntry = {
-          thumbnailFile: JSON.parse(JSON.stringify(stockOptionalOverrides.thumbnailFile)),
-          addId: JSON.parse(JSON.stringify(stockOptionalOverrides.addId)),
-          addTags: JSON.parse(JSON.stringify(stockOptionalOverrides.addTags)),
-          compileAllLinksIntoOneEntry: JSON.parse(JSON.stringify(stockOptionalOverrides.compileAllLinksIntoOneEntry)),
-          useProvidedFileName: JSON.parse(JSON.stringify(stockOptionalOverrides.useProvidedFileName)),
+  router.post(
+      "/create-album",
+      upload.single("album_thumbnail_file"),
+      async (req, res) => {
+        const { type, name, isHidden } = req.body;
+        let album_thumbnail_files;
+        const newAlbum: IAlbumDictionaryItem = {
+          name: name as string,
+          id: uuidv4(),
+          albumCoverImage: "album_thumbnail_files/image.svg",
+          type: type as AlbumSchemaType,
+          uuid: uuidv4(),
+          estimatedPicCount: 0,
+          isHidden: !!isHidden,
+        };
+        if (req.file) {
+          album_thumbnail_files = req.file as Express.Multer.File;
+          newAlbum.albumCoverImage = album_thumbnail_files.filename;
         }
+  
+        database.createAlbum(newAlbum);
+  
+        res.status(200).json(newAlbum);
       }
-      
-      
-      let addedPicsArray: IDBEntry[] = [];
-      let compiledEntry: INewPicture = {
-            data:{},
-            imagesDataArray:[],
-            indexer:0,
-            ids: {},
-            links: {},
-            isMultiSource: stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue,
-          };
-          let arrayOfInputs: string[] | Express.Multer.File[] = [];
-          if (url) {
-            arrayOfInputs = url.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
-          } else if (files) arrayOfInputs = files.map(file => filePathDict[file])
-      if (arrayOfInputs) {
-        
-        const forLoopPromise = new Promise<IDBEntry[]>(async (resolve, reject) => {
-          for (let i = 0; i < arrayOfInputs.length; i++) {
-            const value = arrayOfInputs[i];
-           await new Promise<void>((resolve, reject) => setTimeout(() => {resolve()}, 100)) //just wait a bit
-           if (stockOptionalOverridesPerEntry) {
-            
-             if (stockOptionalOverridesPerEntry.addId.textField && addidsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addId.textField.value = addidsArrayPerEntry[ (i > addidsArrayPerEntry.length) ? (addidsArrayPerEntry.length - 1) : i];
-             if (stockOptionalOverridesPerEntry.addTags.textField && addTagsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addTags.textField.value = addTagsArrayPerEntry[ (i > addTagsArrayPerEntry.length) ? (addTagsArrayPerEntry.length - 1) : i];
-             if (stockOptionalOverridesPerEntry.useProvidedFileName.textField && providedFileNamePerEntry?.length) stockOptionalOverridesPerEntry.useProvidedFileName.textField.value = providedFileNamePerEntry[ (i > providedFileNamePerEntry.length) ? (providedFileNamePerEntry.length - 1) : i];
-             
-            }
-            const entry = await logic.ProcessInput(value, type, album, optionalOverrideParams ?? {}, stockOptionalOverridesPerEntry as IPicFormStockOverrides);
-            console.log(`${i} / ${arrayOfInputs.length}`);
-            let hasVideo = false;
-            if (entry && entry.imagesDataArray?.length) {
-              hasVideo = !!entry.imagesDataArray.filter(fl => fl.isVideo).length
-    
-              if (stockOptionalOverridesPerEntry?.addTags.textField?.value) {
-                entry.tags = entry.tags ? [...entry.tags, ...(stockOptionalOverridesPerEntry.addTags.textField.value as any).replaceAll(' ', "").split(',')] : (stockOptionalOverridesPerEntry.addTags.textField.value as any).replaceAll(' ', "").split(',');
-              }
-    
-              if (stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue) {
-                compiledEntry.imagesDataArray = compiledEntry.imagesDataArray.concat(entry.imagesDataArray);
-                compiledEntry.urlsArray = entry.urlsArray ? compiledEntry.urlsArray?.concat(entry.urlsArray) : compiledEntry.urlsArray;
-                entry.ids ? Object.assign(compiledEntry.ids, {[i]:  entry.ids})      : {};
-                entry.links ? Object.assign(compiledEntry.links, {[i]:  entry.links}) : {};
-                compiledEntry.hasVideo = compiledEntry.hasVideo ?? hasVideo;
-                if (entry.tags) {
-                  compiledEntry.tags = compiledEntry.tags ? compiledEntry.tags.concat(entry.tags) : entry.tags;
-                }
-         
-                if (entry.artists) {
-                  compiledEntry.artists = compiledEntry.artists ? compiledEntry.artists.concat(entry.artists) : entry.artists
-                }
-                
-              } else {
-                await database.addEntry(album, {
-                  ...entry,
-                  isNSFW: entry.isNSFW ?? false,
-                  id: uuidv4(),
-                  hasVideo: hasVideo,
-                  album: album,
-                  date_added: (new Date()).getTime(),
-                  isHidden: !!isHidden
-                }, type)
-                .then(res => addedPicsArray.push(res))
-                .catch(console.log)
-              }
-            }
-            if (i == arrayOfInputs.length - 1) {
-              if (stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue) {      
-                await database.addEntry(album, {
-                  ...compiledEntry,
-                  isNSFW: compiledEntry.isNSFW ?? false,
-                  id: uuidv4(),
-                  hasVideo: hasVideo,
-                  album: album,
-                  date_added: (new Date()).getTime(),
-                  isHidden: !!isHidden
-                }, type)
-                .then(res => addedPicsArray.push(res))
-                .catch(console.log)
-              }
-              resolve(addedPicsArray)
-            } 
+    );
+    router.post("/force-save", async (req, res) => {
+      console.log(req);
+      return res.status(200).json({ sex: "sex" });
+    });
+    router.post("/check-status", async (req, res) => {
+      return res.status(200).json({ sex: "sex" });
+    });
+  
+    router.post("/add-pictures", upload.array("temp_download"), async (req, res) => {
+      let newEntries: IDBEntry[] = [];
+      const body: INewPic[] = JSON.parse(req.body.entries);
+  
+      const filePathDict: {[name: string]: Express.Multer.File} = {}
+      const reqFiles: Express.Multer.File[] | undefined = req.files as  Express.Multer.File[] | undefined
+      const fileCount  = reqFiles?.length
+      if (reqFiles && fileCount) {
+        reqFiles.forEach(file => filePathDict[file.originalname] = file)
+      }
+  
+      for (let newEntry = 0; newEntry < body.length; newEntry++) {
+        let addTagsArrayPerEntry: string[] | undefined = undefined;
+        let addidsArrayPerEntry: string[] | undefined = undefined;
+        let providedFileNamePerEntry: string[] | undefined = undefined;
+        let stockOptionalOverridesPerEntry: IPicFormStockOverrides | undefined;
+        const { url, album, type, files, isHidden, optionalOverrideParams, stockOptionalOverrides } = body[newEntry]; //remember to do .split('\n') and for each to get the stuff bla bla
+        if (stockOptionalOverrides) {
+          
+          if (stockOptionalOverrides.addTags.textField && stockOptionalOverrides.addTags.textField.value)
+          addTagsArrayPerEntry = stockOptionalOverrides.addTags.textField?.value.replaceAll(" ", "_").split("\n").filter( (a:string) => a != "");
+          if (stockOptionalOverrides.addId.textField && stockOptionalOverrides.addId.textField.value)
+          addidsArrayPerEntry = stockOptionalOverrides.addId.textField?.value.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
+          if (stockOptionalOverrides.useProvidedFileName.textField && stockOptionalOverrides.useProvidedFileName.textField.value)
+          providedFileNamePerEntry = stockOptionalOverrides.addId.textField?.value.replaceAll(" ", "_").split("\n").filter( (a:string) => a != "");
+          
+          stockOptionalOverridesPerEntry = {
+            thumbnailFile: JSON.parse(JSON.stringify(stockOptionalOverrides.thumbnailFile)),
+            addId: JSON.parse(JSON.stringify(stockOptionalOverrides.addId)),
+            addTags: JSON.parse(JSON.stringify(stockOptionalOverrides.addTags)),
+            compileAllLinksIntoOneEntry: JSON.parse(JSON.stringify(stockOptionalOverrides.compileAllLinksIntoOneEntry)),
+            useProvidedFileName: JSON.parse(JSON.stringify(stockOptionalOverrides.useProvidedFileName)),
           }
-        });
-        const resPromise = await forLoopPromise;
-        newEntries.push(...resPromise);
+        }
+        
+        
+        let addedPicsArray: IDBEntry[] = [];
+        let compiledEntry: INewPicture = {
+              data:{},
+              imagesDataArray:[],
+              indexer:0,
+              ids: {},
+              links: {},
+              isMultiSource: stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue,
+            };
+            let arrayOfInputs: string[] | Express.Multer.File[] = [];
+            if (url) {
+              arrayOfInputs = url.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
+            } else if (files) arrayOfInputs = files.map(file => filePathDict[file])
+        if (arrayOfInputs) {
+          
+          const forLoopPromise = new Promise<IDBEntry[]>(async (resolve, reject) => {
+            for (let i = 0; i < arrayOfInputs.length; i++) {
+              const value = arrayOfInputs[i];
+             await new Promise<void>((resolve, reject) => setTimeout(() => {resolve()}, 100)) //just wait a bit
+             if (stockOptionalOverridesPerEntry) {
+              
+               if (stockOptionalOverridesPerEntry.addId.textField && addidsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addId.textField.value = addidsArrayPerEntry[ (i > addidsArrayPerEntry.length) ? (addidsArrayPerEntry.length - 1) : i];
+               if (stockOptionalOverridesPerEntry.addTags.textField && addTagsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addTags.textField.value = addTagsArrayPerEntry[ (i > addTagsArrayPerEntry.length) ? (addTagsArrayPerEntry.length - 1) : i];
+               if (stockOptionalOverridesPerEntry.useProvidedFileName.textField && providedFileNamePerEntry?.length) stockOptionalOverridesPerEntry.useProvidedFileName.textField.value = providedFileNamePerEntry[ (i > providedFileNamePerEntry.length) ? (providedFileNamePerEntry.length - 1) : i];
+               
+              }
+              const entry = await logic.ProcessInput(value, type, album, optionalOverrideParams ?? {}, stockOptionalOverridesPerEntry as IPicFormStockOverrides);
+              console.log(`${i} / ${arrayOfInputs.length}`);
+              let hasVideo = false;
+              if (entry && entry.imagesDataArray?.length) {
+                hasVideo = !!entry.imagesDataArray.filter(fl => fl.isVideo).length
+      
+                if (stockOptionalOverridesPerEntry?.addTags.textField?.value) {
+                  entry.tags = entry.tags ? [...entry.tags, ...(stockOptionalOverridesPerEntry.addTags.textField.value as any).replaceAll(' ', "").split(',')] : (stockOptionalOverridesPerEntry.addTags.textField.value as any).replaceAll(' ', "").split(',');
+                }
+      
+                if (stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue) {
+                  compiledEntry.imagesDataArray = compiledEntry.imagesDataArray.concat(entry.imagesDataArray);
+                  compiledEntry.urlsArray = entry.urlsArray ? compiledEntry.urlsArray?.concat(entry.urlsArray) : compiledEntry.urlsArray;
+                  entry.ids ? Object.assign(compiledEntry.ids, {[i]:  entry.ids})      : {};
+                  entry.links ? Object.assign(compiledEntry.links, {[i]:  entry.links}) : {};
+                  compiledEntry.hasVideo = compiledEntry.hasVideo ?? hasVideo;
+                  if (entry.tags) {
+                    compiledEntry.tags = compiledEntry.tags ? compiledEntry.tags.concat(entry.tags) : entry.tags;
+                  }
+           
+                  if (entry.artists) {
+                    compiledEntry.artists = compiledEntry.artists ? compiledEntry.artists.concat(entry.artists) : entry.artists
+                  }
+                  
+                } else {
+                  await database.addEntry(album, {
+                    ...entry,
+                    isNSFW: entry.isNSFW ?? false,
+                    id: uuidv4(),
+                    hasVideo: hasVideo,
+                    album: album,
+                    date_added: (new Date()).getTime(),
+                    isHidden: !!isHidden
+                  }, type)
+                  .then(res => addedPicsArray.push(res))
+                  .catch(console.log)
+                }
+              }
+              if (i == arrayOfInputs.length - 1) {
+                if (stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue) {      
+                  await database.addEntry(album, {
+                    ...compiledEntry,
+                    isNSFW: compiledEntry.isNSFW ?? false,
+                    id: uuidv4(),
+                    hasVideo: hasVideo,
+                    album: album,
+                    date_added: (new Date()).getTime(),
+                    isHidden: !!isHidden
+                  }, type)
+                  .then(res => addedPicsArray.push(res))
+                  .catch(console.log)
+                }
+                resolve(addedPicsArray)
+              } 
+            }
+          });
+          const resPromise = await forLoopPromise;
+          newEntries.push(...resPromise);
+        }
+        database.updateCountEntriesInAlbumByName(album)
       }
-      database.updateCountEntriesInAlbumByName(album)
-    }
-    res.status(200).json(newEntries)
-    //database.updateCountEntriesInAlbumByName(album)
-  });
-
-  router.post("/search", async (req, res) => {
-    const {album, options} = req.body; 
-    const { sortBy, tags, nameIncludes, showNSFW, showHidden } = options;
-    
-    let sortOBJ: any = {}
-    sortOBJ[sortBy] = 1;
-
-    const filterOBJ: IFilterObj = { 
-      showNSFW: showNSFW, 
-      showHidden: showHidden,
-      tags: tags,
-      nameIncludes: nameIncludes,
-    }
-
-
-    const picsInAlbum = await database.getEntriesInAlbumByUUIDAndFilter(album, filterOBJ , sortOBJ)
-    
-    if (picsInAlbum && picsInAlbum.length) {
-      res.status(200).json(picsInAlbum)
-    } else {
-      res.status(404)
-    } 
-  });
-
-  router.get("/albums", async (req, res) => {
-    
-    const albums = await database.getAlbums(!!settings.stock_settings.show_hidden.checkBox?.checkBoxValue)
-    return res.status(200).json(albums);
-  });
-
-  router.post("/connection-test", async (req, res) => {
-    const {
-      database_url,
-      stock_settings,
-      special_settings,
-      special_params
-      } = req.body;
-
-
-      const responseSettings: {
-        database_url: IParam;
-        stock_settings: ISettings['stock_settings'];
-        special_settings: ISettings['special_settings'];
-        special_params: ISettings['special_params'];
-      } = {
+      res.status(200).json(newEntries)
+      //database.updateCountEntriesInAlbumByName(album)
+    });
+  
+    router.post("/search", async (req, res) => {
+      const {album, options} = req.body; 
+      const { sortBy, tags, nameIncludes, showNSFW, showHidden } = options;
+      
+      let sortOBJ: any = {}
+      sortOBJ[sortBy] = 1;
+  
+      const filterOBJ: IFilterObj = { 
+        showNSFW: showNSFW, 
+        showHidden: showHidden,
+        tags: tags,
+        nameIncludes: nameIncludes,
+      }
+  
+  
+      const picsInAlbum = await database.getEntriesInAlbumByUUIDAndFilter(album, filterOBJ , sortOBJ)
+      if (picsInAlbum && picsInAlbum.length) {
+        res.status(200).json(picsInAlbum)
+      } else {
+        res.status(404)
+      } 
+    });
+  
+    router.get("/albums", async (req, res) => {
+      
+      const albums = await database.getAlbums(!!settings.stock_settings.show_hidden.checkBox?.checkBoxValue)
+      return res.status(200).json(albums);
+    });
+  
+    router.post("/connection-test", async (req, res) => {
+      const {
         database_url,
         stock_settings,
         special_settings,
         special_params
-      }
+        } = req.body;
+  
+  
+        const responseSettings: {
+          database_url: IParam;
+          stock_settings: ISettings['stock_settings'];
+          special_settings: ISettings['special_settings'];
+          special_params: ISettings['special_params'];
+        } = {
+          database_url,
+          stock_settings,
+          special_settings,
+          special_params
+        }
+        
+  
+      const errorsObject: IErrorObject = {
+        hasError: false,
+        responseSettings: responseSettings,
+      }  
       
-
-    const errorsObject: IErrorObject = {
-      hasError: false,
-      responseSettings: responseSettings,
-    }  
-    
-    if (responseSettings.database_url.checkBox?.checkBoxValue && responseSettings.database_url.textField?.value) {
-      const canConnect = await MongoDatabaseLogic.testMongoDBConnection(responseSettings.database_url.textField?.value);
-      if (canConnect) {  
-        settings.database_url = responseSettings.database_url;
-        responseSettings.database_url.errorMessage = "";
-      }
-      else {
-        errorsObject.hasError = true;
-        responseSettings.database_url.errorMessage = "Unable to connect to database"
-      }
-    } else settings.database_url.checkBox = {checkBoxValue: false, defaultValue: false, checkBoxDescription: ""}
-    
-    settings.stock_settings = responseSettings.stock_settings;
-    const arrayLength = logic.specialSettingValidityCheck.length;
-    if (logic.specialSettingValidityCheck.length && (settings.special_params && errorsObject.responseSettings.special_params) && (settings.special_settings && errorsObject.responseSettings.special_settings)) {
-        const validityCheckLoop = new Promise(async (resolve, reject) => {
-          logic.specialSettingValidityCheck.forEach(async (checkFunc, index) => {
-            const param = recursiveObjectIndex<IParam>(errorsObject.responseSettings, checkFunc.indexer);
-            if (param) {
-              param.errorMessage = await checkFunc.checkValid(!!param.checkBox?.checkBoxValue, param.textField?.value);
-              errorsObject.hasError = errorsObject.hasError || !!param.errorMessage
-              
-            }
-            if ((index + 1) == arrayLength) {
-              resolve(true)
-            }
+      if (responseSettings.database_url.checkBox?.checkBoxValue && responseSettings.database_url.textField?.value) {
+        const canConnect = await MongoDatabaseLogic.testMongoDBConnection(responseSettings.database_url.textField?.value);
+        if (canConnect) {  
+          settings.database_url = responseSettings.database_url;
+          responseSettings.database_url.errorMessage = "";
+        }
+        else {
+          errorsObject.hasError = true;
+          responseSettings.database_url.errorMessage = "Unable to connect to database"
+        }
+      } else settings.database_url.checkBox = {checkBoxValue: false, defaultValue: false, checkBoxDescription: ""}
+      
+      settings.stock_settings = responseSettings.stock_settings;
+      const arrayLength = logic.specialSettingValidityCheck.length;
+      if (logic.specialSettingValidityCheck.length && (settings.special_params && errorsObject.responseSettings.special_params) && (settings.special_settings && errorsObject.responseSettings.special_settings)) {
+          const validityCheckLoop = new Promise(async (resolve, reject) => {
+            logic.specialSettingValidityCheck.forEach(async (checkFunc, index) => {
+              const param = recursiveObjectIndex<IParam>(errorsObject.responseSettings, checkFunc.indexer);
+              if (param) {
+                param.errorMessage = await checkFunc.checkValid(!!param.checkBox?.checkBoxValue, param.textField?.value);
+                errorsObject.hasError = errorsObject.hasError || !!param.errorMessage
+                
+              }
+              if ((index + 1) == arrayLength) {
+                resolve(true)
+              }
+            })
           })
-        })
-        await validityCheckLoop;
+          await validityCheckLoop;
+        }
+  
+      if (!errorsObject.hasError) {
+        settings.special_params = special_params;
+        settings.special_settings = special_settings;
+  
       }
-
-    if (!errorsObject.hasError) {
-      settings.special_params = special_params;
-      settings.special_settings = special_settings;
-
-    }
-
-    saveSettings();
-    return res.status(200).json(errorsObject);
-  });
-
-  router.get("/types-of-models", async (req, res) => {
-    return res.status(200).json(logic.supportedTypes);
-  });
-
-  router.get("/special-settings", async (req, res) => {
-    return res.status(200).json(logic.specialSettingsDictionary);
-  });
-
-  router.get("/special-params-dictionary", async (req, res) => {
-    return res.status(200).json(logic.specialParamsDictionary);
-  });
-
-  router.delete('/delete-entry-by-id', async (req, res) => {
-    const { album, entriesIDs } = req.body      
-    await database.deleteEntries(album, entriesIDs);
-    database.updateCountEntriesInAlbumByName(album)
-  })
-
-  router.post("/handle-hide-pictures", (req, res) => {
-    const { album, entriesIDs, hide } = req.body;
-    database.handleHidingPicturesInAlbum(album, entriesIDs, hide)
-  })
-
-  router.post("/autocomplete-tags", (req, res) => {
-    const {tagSearch, type} = req.body;
-
-    database.getTagsForAutocomplete(tagSearch, type).then(tags => {
-      res.status(200).json({tags: tags || []})
+  
+      saveSettings();
+      return res.status(200).json(errorsObject);
+    });
+  
+    router.get("/types-of-models", async (req, res) => {
+      return res.status(200).json(logic.supportedTypes);
+    });
+  
+    router.get("/special-settings", async (req, res) => {
+      return res.status(200).json(logic.specialSettingsDictionary);
+    });
+  
+    router.get("/special-params-dictionary", async (req, res) => {
+      return res.status(200).json(logic.specialParamsDictionary);
+    });
+  
+    router.delete('/delete-entry-by-id', async (req, res) => {
+      const { album, entriesIDs } = req.body      
+      await database.deleteEntries(album, entriesIDs);
+      database.updateCountEntriesInAlbumByName(album)
     })
-  })
+  
+    router.post("/handle-hide-pictures", (req, res) => {
+      const { album, entriesIDs, hide } = req.body;
+      database.handleHidingPicturesInAlbum(album, entriesIDs, hide)
+    })
+  
+    router.post("/autocomplete-tags", (req, res) => {
+      const {tagSearch, type} = req.body;
+  
+      database.getTagsForAutocomplete(tagSearch, type).then(tags => {
+        res.status(200).json({tags: tags || []})
+      })
+    })
+  
+    router.post("/delete-albums-by-uuids", (req, res) => {
+      const {albumUUIDs} = req.body;
+      database.deleteAlbumsByUUIDS(albumUUIDs)
+      res.status(200);
+    })
+  
+    router.post("/handle-hiding-albums", (req, res) => {
+      const {albumUUIDs, hide} = req.body;
+      database.handleHidingAlbumsByUUIDs(albumUUIDs, hide)
+      res.status(200);
+    })
+    return router;
+}
+export const Router =  initialize()
 
-  router.post("/delete-albums-by-uuids", (req, res) => {
-    const {albumUUIDs} = req.body;
-    database.deleteAlbumsByUUIDS(albumUUIDs)
-    res.status(200);
-  })
-
-  router.post("/handle-hiding-albums", (req, res) => {
-    const {albumUUIDs, hide} = req.body;
-    database.handleHidingAlbumsByUUIDs(albumUUIDs, hide)
-    res.status(200);
-  })
-
-
-  export default router;
 
   function recursiveObjectIndex<T>(objectToIndex:any, arrayOfIndexes: string[]): T | undefined {
     

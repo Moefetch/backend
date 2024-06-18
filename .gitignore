@@ -10,3 +10,4 @@ plugins/
 !/plugins/logicModels/PlainImage.LogicCategories.ts
 /docs/.vitepress/cache
 /docs/.vitepress/dist
+database.sqlite

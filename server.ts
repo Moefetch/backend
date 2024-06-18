@@ -4,7 +4,7 @@ import http from "http";
 import settings from "./settings";
 import chalk from "chalk";
 import Utility from './src/Utility'
-import router from "./src/routes";
+import {Router} from "./src/routes";
 
 const utility = new Utility();
 
@@ -38,7 +38,7 @@ class backendServer {
       )
     );
   }
-  private registerExpressRoutes() {
+  private async registerExpressRoutes() {
     this.express.use(
       cors({
         origin: (origin: any, callback: any) => callback(null, true),
@@ -47,7 +47,7 @@ class backendServer {
     //oh fuck here we go
     this.express.use(express.json());
     this.express.use(express.static(settings.downloadFolder));
-    this.express.use(router)
+    this.express.use(await Router)
   }
 }
 export default new backendServer();

@@ -96,9 +96,7 @@ public async getAlbums(showHidden: boolean) {
     const album = (await AlbumsDictionaryDB.findOne({
       uuid: albumUUID,
     }));
-    if (album) {
-      console.log(filterObject);
-      
+    if (album) {  
       return await modelsDictionary(album.name).find(filterObject);
     }
     

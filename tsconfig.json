@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "resolveJsonModule": true,
-    "strict": true,
+    //"strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "target": "es2021",
@@ -10,7 +10,9 @@
     "sourceMap": true,
     "module": "commonjs",
     "baseUrl": "./",
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true
   },
   "lib": [
     "es5", "es6", "dom", "dom.iterable"

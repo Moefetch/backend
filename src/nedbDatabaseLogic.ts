@@ -30,87 +30,110 @@ function albumsDictionaryMap(name: string): nedb<IDBEntry> {
 
 export default class MongoDatabaseLogic {
 
-/**
- * createAlbum
- * @param newAlbum an instance of IAlbumDictionaryItem to create an album of
- */
-public async createAlbum(newAlbum: IAlbumDictionaryItem) {
-  AlbumsDictionaryDB.insert(newAlbum)
-  albumsDictionaryMap(newAlbum.name)
+  /**
+   * createAlbum
+   * @param newAlbum an instance of IAlbumDictionaryItem to create an album of
+   */
+  public async createAlbum(newAlbum: IAlbumDictionaryItem) {
+    AlbumsDictionaryDB.insert(newAlbum)
+    albumsDictionaryMap(newAlbum.name)
 
-}
-    
-/**
- * deleteAlbum
- */
-public async deleteAlbumByName(albumName: string) {
-  fs.unlink(`${baseDBURL}/AlbumFolder/${albumName}.db`, (err) => console.log(err))
-  AlbumsDictionaryDB.remove({name: albumName})
-  stroredAlbumDBs[albumName] = undefined;
-}
-
-
-/**
- * deleteAlbumsByUUIDS
- */
-public deleteAlbumsByUUIDS(albumUUIDs: string[]) {
-  AlbumsDictionaryDB.find({uuid: {$in: albumUUIDs}}).exec((err, docs) => {
-    docs.forEach( album => this.deleteAlbumByName(album.name))
-    
-  })
-}  
-
-/**
- * hideAlbumsByUUIDs
- */
-public handleHidingAlbumsByUUIDs(albumUUIDs: string[], hide: boolean) {
-  AlbumsDictionaryDB.update({uuid: {$in: albumUUIDs}}, {$set: {isHidden: hide}}, {multi: true}, (err, numberOfUpdated, upsert) => {
-    err ? console.log(err) : '';
-  })
-}
-
-/**
- * getAlbums
- */
-public async getAlbums(showHidden: boolean) {
-const filter = showHidden ? {} : {isHidden: false};
- return new Promise<IAlbumDictionaryItem[]>((resolve, reject) => {
-    AlbumsDictionaryDB.find(filter).exec(( err, docs ) => {
-      if (!err) resolve(docs);
-      else reject(err);
-    })
-  })
-}
-
-
-   /**
-    * get Entries and filter
-    */
-    public async getEntriesInAlbumByUUIDAndFilter(albumUUID: string, initialFilterObject: IFilterObj, sortObj?: any): Promise<IDBEntry[]> {
-      const filterObject: any = {
-      }
-      initialFilterObject.nameIncludes? filterObject.name = {$in: initialFilterObject.nameIncludes} : {};
-      initialFilterObject.tags? filterObject.tags = {$in: initialFilterObject.tags} : {};
-      initialFilterObject.artists ? filterObject.artists = {$in: initialFilterObject.artists} : {};
-      (initialFilterObject.showHidden) ? {} : (filterObject.isHidden = false);
-      (initialFilterObject.showNSFW ) ? {} : (filterObject.isNSFW = false);
-  
-       return new Promise<IDBEntry[]>((resolve, reject) => {
-          AlbumsDictionaryDB.findOne({
-            uuid: albumUUID,
-          }, (err, doc) => {
-            
-            
-            if (!err && doc) albumsDictionaryMap(doc.name).find(filterObject).sort(sortObj).exec( (err, docs) => {
-              if (!err) resolve(docs)
-              else reject(err);
-            });
-          });
-       })
+  }
       
+  /**
+   * deleteAlbum
+   */
+  public async deleteAlbumByName(albumName: string) {
+    fs.unlink(`${baseDBURL}/AlbumFolder/${albumName}.db`, (err) => console.log(err))
+    AlbumsDictionaryDB.remove({name: albumName})
+    stroredAlbumDBs[albumName] = undefined;
+  }
+
+
+  /**
+   * deleteAlbumsByUUIDS
+   */
+  public deleteAlbumsByUUIDS(albumUUIDs: string[]) {
+    AlbumsDictionaryDB.find({uuid: {$in: albumUUIDs}}).exec((err, docs) => {
+      docs.forEach( album => this.deleteAlbumByName(album.name))
+      
+    })
+  }  
+
+  /**
+   * hideAlbumsByUUIDs
+   */
+  public handleHidingAlbumsByUUIDs(albumUUIDs: string[], hide: boolean) {
+    AlbumsDictionaryDB.update({uuid: {$in: albumUUIDs}}, {$set: {isHidden: hide}}, {multi: true}, (err, numberOfUpdated, upsert) => {
+      err ? console.log(err) : '';
+    })
+  }
+
+  /**
+   * getAlbums
+   */
+  public async getAlbums(showHidden: boolean) {
+  const filter = showHidden ? {} : {isHidden: false};
+  return new Promise<IAlbumDictionaryItem[]>((resolve, reject) => {
+      AlbumsDictionaryDB.find(filter).exec(( err, docs ) => {
+        if (!err) resolve(docs);
+        else reject(err);
+      })
+    })
+  }
+
+
+  /**
+  * get Entries and filter
+  */
+  public async getEntriesInAlbumByNameAndFilter(albumName: string, initialFilterObject: IFilterObj, sortObj?: any): Promise<IDBEntry[]> {
+    const filterObject: any = {
     }
-     
-  
+    initialFilterObject.nameIncludes? filterObject.name = {$in: initialFilterObject.nameIncludes} : {};
+    initialFilterObject.tags? filterObject.tags = {$in: initialFilterObject.tags} : {};
+    initialFilterObject.artists ? filterObject.artists = {$in: initialFilterObject.artists} : {};
+    (initialFilterObject.showHidden) ? {} : (filterObject.isHidden = false);
+    (initialFilterObject.showNSFW ) ? {} : (filterObject.isNSFW = false);
+
+      return new Promise<IDBEntry[]>((resolve, reject) => {
+          
+        albumsDictionaryMap(albumName).find(filterObject).sort(sortObj).exec( (err, docs) => {
+          if (!err) resolve(docs)
+          else reject(err);
+      });
+    })           
+  }
+    
+
+
+  /**
+  * get Entries and filter
+  */
+  public async getEntriesInAlbumByUUIDAndFilter(albumUUID: string, initialFilterObject: IFilterObj, sortObj?: any): Promise<IDBEntry[]> {
+    const filterObject: any = {
+    }
+    initialFilterObject.nameIncludes? filterObject.name = {$in: initialFilterObject.nameIncludes} : {};
+    initialFilterObject.tags? filterObject.tags = {$in: initialFilterObject.tags} : {};
+    initialFilterObject.artists ? filterObject.artists = {$in: initialFilterObject.artists} : {};
+    (initialFilterObject.showHidden) ? {} : (filterObject.isHidden = false);
+    (initialFilterObject.showNSFW ) ? {} : (filterObject.isNSFW = false);
+
+      return new Promise<IDBEntry[]>((resolve, reject) => {
+        AlbumsDictionaryDB.findOne({
+          uuid: albumUUID,
+        }, (err, doc) => {
+          
+          
+          if (!err && doc) albumsDictionaryMap(doc.name).find(filterObject).sort(sortObj).exec( (err, docs) => {
+            if (!err) resolve(docs)
+            else reject(err);
+          });
+        });
+      })
+    
+  }
+    
+
   /**
   * updateEntry
   */
@@ -225,7 +248,7 @@ const filter = showHidden ? {} : {isHidden: false};
     album.count({}, (err, entryNumber) => {
       if (!err) {
 
-        AlbumsDictionaryDB.update({_id: albumDoc._id},{$set:  {estimatedPicCount: entryNumber}})
+        AlbumsDictionaryDB.update({_id: albumDoc.id},{$set:  {estimatedPicCount: entryNumber}})
       }
       else console.log(err);
       

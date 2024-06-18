@@ -80,6 +80,8 @@ export default class LogicModel implements ILogicModels {
           thumbnail_file: type == 'image' ? path : 'album_thumbnail_files/video.svg',
         }]
         resultantData.thumbnailFile = type == 'image' ? path : 'album_thumbnail_files/video.svg';
+        resultantData.links = {};
+        resultantData.links[(new URL(url)).hostname] = url
       return resultantData;
     }
 }

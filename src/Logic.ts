@@ -64,7 +64,7 @@ export class Logic {
             else resultantData.thumbnailURL = resultantData.imagesDataArray[resultantData.indexer].thumbnail_file
         }
 
-        if (resultantData?.imagesDataArray?.length) return resultantData
+        if (resultantData?.imagesDataArray.length) return resultantData
 
     }    
 

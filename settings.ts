@@ -49,13 +49,18 @@ class Settings implements ISetting {
         this.ip = !!ip ? ip : "";
         this.port = port ?? 2234;
         this.database_url = database_url ?? {
-          containsString: true,
-            checkBoxValue: false,
+          valueType: 'both',
+          type: "setting",
+          checkBox: {
             checkBoxDescription: "Use a mongoDB database",
+            defaultValue:false,
+            checkBoxValue: false,
+          },
             textField: {
               fieldPlaceholder:
                 "Database URL, use the form mongodb://username:password@host:port/moefetch",
               value: "",
+              defaultValue:"",
             }
           },
         this.downloadFolder = downloadFolder ?? '../files'
@@ -64,24 +69,40 @@ class Settings implements ISetting {
         this.special_params = special_params ?? {};
         this.stock_settings = stock_settings ?? {
             blur_nsfw: {
-              containsString: false,
-              checkBoxValue: true,
-              checkBoxDescription: "Blur NSFW tagged posts",
+              type: "setting",
+              valueType:'checkBox',
+              checkBox: {
+                defaultValue: true,
+                checkBoxValue: true,
+                checkBoxDescription: "Blur NSFW tagged posts",
+              }
             },
             show_hidden: {
-              containsString: false,
-              checkBoxValue: true,
-              checkBoxDescription: "Show hidden posts and albums",
+              type: "setting",
+              valueType:'checkBox',
+              checkBox: {
+                checkBoxDescription: "Show hidden posts and albums",
+                checkBoxValue: true,
+                defaultValue:true,
+              },
             },
             show_nsfw: {
-              containsString: false,
-              checkBoxValue: true,
-              checkBoxDescription: "Show NSFW tagged posts",
+              type: "setting",
+              valueType:'checkBox',
+              checkBox: {
+                checkBoxDescription: "Show NSFW tagged posts",
+                checkBoxValue: true,
+                defaultValue:true,
+              },
             },
             thumbnail_list_to_left: {
-              containsString: false,
-              checkBoxValue: false,
-              checkBoxDescription: "Have the list of thumbnails on the left or on the bottom",
+              type: "setting",
+              valueType:'checkBox',
+              checkBox: {
+                checkBoxDescription: "Have the list of thumbnails on the left or on the bottom",
+                checkBoxValue: false,
+                defaultValue: false,
+              },
             }
           }
 
