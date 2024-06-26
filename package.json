@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@types/probe-image-size": "^7.2.0",
+    "better-sqlite3": "^9.6.0",
     "chalk": "^4.1.2",
     "cheerio": "^1.0.0-rc.10",
     "cors": "^2.8.5",

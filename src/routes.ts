@@ -79,7 +79,7 @@ compareSpecialSettingsToDefault(settings, "special_params", logic.specialParamsD
 compareSpecialSettingsToDefault(settings, "special_settings", logic.specialSettingsDictionary ?? {});
 saveSettings()
 const databaseConnectionOptionsDefault = {
-  type: "sqlite",
+  type: "better-sqlite3",
   database: "database.sqlite",
   synchronize: true,
   logging: false,
@@ -91,7 +91,7 @@ const databaseConnectionOptionsDefault = {
 const databasePromise = TypeORMInterface.init(databaseConnectionOptionsDefault);
 
 //const database = (settings.database_url.checkBox?.checkBoxValue && settings.database_url.textField?.value) ? (new MongoDatabaseLogic(settings.database_url.textField.value, logic.supportedTypes)) : (new NeDBDatabaseLogic(logic.supportedTypes)) ;
- 
+const neDBConnection = new NeDBDatabaseLogic(logic.supportedTypes)
 const router = express.Router();
 
 function saveSettings() {
@@ -299,42 +299,45 @@ export async function initialize() {
   
     router.post("/connection-test", async (req, res) => {
       const {
-        database_url,
+        legacyMongoDB,
         stock_settings,
+        database,
         special_settings,
         special_params
         } = req.body;
-  
+        
   
         const responseSettings: {
-          database_url: IParam;
+          legacyMongoDB: IParam;
+          database: ISettings['database'];
           stock_settings: ISettings['stock_settings'];
           special_settings: ISettings['special_settings'];
           special_params: ISettings['special_params'];
         } = {
-          database_url,
+          legacyMongoDB: legacyMongoDB,
+          database,
           stock_settings,
           special_settings,
           special_params
         }
-        
+        settings.database = database;
   
       const errorsObject: IErrorObject = {
         hasError: false,
         responseSettings: responseSettings,
       }  
       
-      if (responseSettings.database_url.checkBox?.checkBoxValue && responseSettings.database_url.textField?.value) {
-        const canConnect = await MongoDatabaseLogic.testMongoDBConnection(responseSettings.database_url.textField?.value);
+      if (responseSettings.legacyMongoDB.checkBox?.checkBoxValue && responseSettings.legacyMongoDB.textField?.value) {
+        const canConnect = await MongoDatabaseLogic.testMongoDBConnection(responseSettings.legacyMongoDB.textField?.value);
         if (canConnect) {  
-          settings.database_url = responseSettings.database_url;
-          responseSettings.database_url.errorMessage = "";
+          settings.legacyMongoDB = responseSettings.legacyMongoDB;
+          responseSettings.legacyMongoDB.errorMessage = "";
         }
         else {
           errorsObject.hasError = true;
-          responseSettings.database_url.errorMessage = "Unable to connect to database"
+          responseSettings.legacyMongoDB.errorMessage = "Unable to connect to database"
         }
-      } else settings.database_url.checkBox = {checkBoxValue: false, defaultValue: false, checkBoxDescription: ""}
+      } else settings.legacyMongoDB.checkBox = {checkBoxValue: false, defaultValue: false, checkBoxDescription: ""}
       
       settings.stock_settings = responseSettings.stock_settings;
       const arrayLength = logic.specialSettingValidityCheck.length;
@@ -364,7 +367,27 @@ export async function initialize() {
       saveSettings();
       return res.status(200).json(errorsObject);
     });
-  
+    router.post("/migrate-database",async (req, res) => {
+      const albums = await neDBConnection.getAlbums(true);
+      const addAllAlbums = new Promise(async (resolve,reject)=>{
+        for (let i = 0; i < albums.length; i++) {
+          const album = albums[i];
+           album.id = album.uuid
+            console.log(database.appDataSource.entityMetadatas.length);
+            await database.createAlbum(album);
+            const entries = await neDBConnection.getEntriesInAlbumByNameAndFilter(album.name,{showHidden:true,showNSFW:true});
+            for (let ii = 0; ii < entries.length; ii++) {
+              const entry = entries[ii];
+              await database.addEntry(album.name, (entry as any), album.type)
+            }
+            if (i == (albums.length -1)) {
+              resolve(null)
+            }
+        }
+      })
+      await addAllAlbums;
+      return res.status(200);
+    })
     router.get("/types-of-models", async (req, res) => {
       return res.status(200).json(logic.supportedTypes);
     });

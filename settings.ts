@@ -14,22 +14,32 @@ export interface ISetting {
     ip: string;
     downloadFolder: string;
     hostname: string;
-    database_url: IParam;
+    legacyMongoDB: IParam;
+    database: ITypeORMDatabase;
     stock_settings: IStockSettings;
     special_settings: IModelSpecialParam;
     special_params: IModelSpecialParam;
 }
 
+export interface ITypeORMDatabase {
+  type: "sqlite" | "mysql" | "postgres" |"cockroachdb" | "sap" | "spanner" | "mariadb" | "better-sqlite3" ;
+  host?: string;
+  port?: number;
+  database: string;
+  username?: string;
+  password?:string;
+}
+
 /**
  * Creates a settings JSON and loads it from the same folder the executable is in
- * stolen from Taku by Geoxor 
  */
 class Settings implements ISetting {
     public port: number;
     public ip: string;
     public downloadFolder: string;
     public hostname: string ;
-    public database_url: IParam;
+    public legacyMongoDB: IParam;
+    public database: ITypeORMDatabase;
     public stock_settings: IStockSettings;
     public special_settings: IModelSpecialParam;
     public special_params: IModelSpecialParam;
@@ -39,7 +49,8 @@ class Settings implements ISetting {
         const { port, 
             ip, 
             hostname, 
-            database_url, 
+            legacyMongoDB,
+            database,
             downloadFolder,
             stock_settings,
             special_settings,
@@ -48,11 +59,15 @@ class Settings implements ISetting {
         ) as ISetting;
         this.ip = !!ip ? ip : "";
         this.port = port ?? 2234;
-        this.database_url = database_url ?? {
+        this.database = database ?? {
+          type: "better-sqlite3",
+          database: "database.sqlite"
+        };
+        this.legacyMongoDB = legacyMongoDB ?? {
           valueType: 'both',
           type: "setting",
           checkBox: {
-            checkBoxDescription: "Use a mongoDB database",
+            checkBoxDescription: "Use Legacy mongoDB database",
             defaultValue:false,
             checkBoxValue: false,
           },

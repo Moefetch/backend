@@ -441,7 +441,7 @@ export interface IErrorObject {
 }
 
 export interface IResponseSettings {
-    database_url: IParam;
+    legacyMongoDB: IParam;
     stock_settings: ISettings['stock_settings'];
     special_settings: ISettings['special_settings'];
     special_params: ISettings['special_params'];

@@ -1,27 +1,9 @@
 import "reflect-metadata"
-import { ArrayContains, DataSource, DataSourceOptions, Entity, Equal, Like } from "typeorm"
+import { ArrayContains, DataSource, DataSourceOptions, Entity, Equal, Like, QueryRunner } from "typeorm"
 import { Album } from "../TypeORMEntities/Albums";
 import { albumDBClass,IDBEntry, IEntry } from "../TypeORMEntities/Entry";
 import { Tag } from "../TypeORMEntities/Tags";
 import { AlbumSchemaType, IAlbumDictionaryItem, IFilterObj, ISettings } from "types";
-
-
-
-//move these into a function for generating optitons
-const databaseConnectionOptionsDefault = {
-    type: "sqlite",
-    database: "database.sqlite",
-    synchronize: true,
-    logging: false,
-    entities: [],
-    migrations: [],
-    subscribers: [],
-}
-let databaseConnectionOptionsDefaultEntity: any[] = [Album, Tag];
-databaseConnectionOptionsDefault.entities = databaseConnectionOptionsDefaultEntity;
-let databaseConnectionOptions: DataSourceOptions = databaseConnectionOptionsDefault as DataSourceOptions;
-
-// end of block lmao
 
 
 const doc1 = {
@@ -283,10 +265,10 @@ export class TypeORMInterface {
   /**
   * deleteEntry
   */
-  public deleteEntries(albumName: string, entriesIDs: string[]) {
+  public async deleteEntries(albumName: string, entriesIDs: string[]) {
     const newModelEntry = this.entities[albumName];
-    const queryIDs = entriesIDs.map(id => ({"id":id}));
-    return this.appDataSource.manager.delete(newModelEntry,{where:queryIDs});
+    return entriesIDs.map(id=>this.appDataSource.manager.delete(newModelEntry, {id:id}))
+    
   }
   
 
@@ -309,7 +291,22 @@ export class TypeORMInterface {
 
     return this.appDataSource.manager.save(newEntry);
   }
-  
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.commitTransaction();
+    await queryRunner.query(`PRAGMA foreign_keys = OFF`);
+    await queryRunner.startTransaction();
+
+    // --- Original migration starts here
+    await queryRunner.query(`CREATE TABLE "temporary_photo" (...)`);
+    await queryRunner.query(`INSERT INTO "temporary_photo" (...) SELECT ... FROM "photo"`);
+    await queryRunner.query(`DROP TABLE "photo"`);
+    await queryRunner.query(`ALTER TABLE "temporary_photo" RENAME TO "photo"`);
+    // --- Original migration ends here
+
+    await queryRunner.commitTransaction();
+    await queryRunner.query(`PRAGMA foreign_keys = ON`);
+    await queryRunner.startTransaction();
+  }
   /**
    * addTagEntry
    */
@@ -317,7 +314,8 @@ export class TypeORMInterface {
     const newTag = new Tag();
     newTag.tag = tag;
     newTag.category = type;
-    return this.appDataSource.manager.save(newTag);
+    return this.appDataSource.manager.upsert(Tag,newTag,{skipUpdateIfNoValuesChanged:true,conflictPaths:{tag:true}})
+    //return this.appDataSource.manager.save(newTag);
   }
 
  /**
