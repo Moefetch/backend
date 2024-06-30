@@ -1,7 +1,7 @@
 import fs from "fs";
 import probeImageSize from "probe-image-size";
 
-import { IImageProps, INewPicture, OutgoingHttpHeaders, ISettings, ILogicCategorySpecialSettingsDictionary, ILogicModel,  ILogicCategorySpecialParamsDictionary, IModelDictionary, ILogicCategory, ILogicModelConstructor, IParamValidityCheck, IModelSpecialParam } from "../types";
+import { IImageProps, INewMediaItem, OutgoingHttpHeaders, ISettings, ILogicCategorySpecialSettingsDictionary, ILogicModel,  ILogicCategorySpecialParamsDictionary, IModelDictionary, ILogicCategory, ILogicModelConstructor, IParamValidityCheck, IModelSpecialParam } from "../types";
 import needle from "needle";
 
 export default class Utility {
@@ -307,7 +307,7 @@ public deleteFile(path: string) {
    * downloadAndGetFilePaths
    */
   public async downloadAndGetFilePaths(
-    resultantData: INewPicture,
+    resultantData: INewMediaItem,
     album: string,
     downloadFolder: string,
     optional?: {
@@ -316,7 +316,7 @@ public deleteFile(path: string) {
       providedThumbnailFileExtensions?: string[]
     }
   ) {    
-    let result: INewPicture["imagesDataArray"] = [];
+    let result: INewMediaItem["media"] = [];
     let providedRequestObj: RequestInit | undefined = undefined;
     const urlsArray = resultantData.urlsArray;
     if (resultantData.storedResult) {
@@ -391,7 +391,7 @@ public deleteFile(path: string) {
 
           result.push({
             file: filePath,
-            thumbnail_file: fileThumbnailPath,
+            thumbnailFile: fileThumbnailPath,
             isVideo: resultantData.urlsArray ? !!resultantData.urlsArray[index].isVideo : false,
             imageSize: {
               height: element.height || imageHeight,

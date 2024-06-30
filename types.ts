@@ -100,10 +100,64 @@ export interface IPixivTags {
 export interface IImageDataArray  {
     file: string;
     isVideo: boolean;
+    thumbnailFile?: string;
+    imageSize?: ISizeCalculationResult;
+}
+
+export interface IMediaItem  {
+    file: string;
+    thumbnailFile?: string;
+    isVideo: boolean;
+    alternative_names?: string[];
+    imageSize?: ISizeCalculationResult;
+    index: number;
+	tags?: string[];
+	artists?: string[];
+	isNSFW?: boolean;
+	links?: IPostLinks;
+	ids?: IPostIds;
+	date_created?: number;
+	text?: string;
+}
+
+export interface IOldMedia  {
+    file: string;
+    isVideo: boolean;
     thumbnail_file?: string;
     imageSize?: ISizeCalculationResult;
 }
+
+
 export interface IDBEntry {
+    id: string;
+    indexer: number;
+    //name?: string;
+    //hasVideo?: boolean;
+    media: IMediaItem[];
+    thumbnailFile: string;
+    //alternative_names?: string[];
+    oldMedia?: IOldMedia[];
+    album: string;
+    //tags_pixiv?: string[];
+    //tags_danbooru?: string[];
+    //artists?: string[];
+    //storedResult?: string;
+    //links?: IPostLinks;
+    //ids?: IPostIds;
+    isHidden: boolean;
+    hasNSFW: boolean;
+    //hasResults?: boolean;
+    //pixiv_post_id?: number;
+
+    //compatability with INewAnimePic
+    //tags?: string[];
+    date_added?: number;
+    //date_created?: number;
+    //imageSize?: ISizeCalculationResult;
+}
+
+
+export interface INeDBEntry {
     id: string;
     indexer: number;
     name?: string;
@@ -221,8 +275,8 @@ export interface IModelSpecialParam {
 }
 export interface IProcessDictionary {
         [category: string]: { //undefined is for wildcard functions, gets access to other processing functions within same category
-            [hostname: string]: undefined | ((inputUrl: string, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewPicture | undefined>);
-            undefined?: (inputUrl: string | Express.Multer.File, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides, processDictionary?: IProcessDictionary[string]) => Promise<INewPicture | undefined>;
+            [hostname: string]: undefined | ((inputUrl: string, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewMediaItem | undefined>);
+            undefined?: (inputUrl: string | Express.Multer.File, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides, processDictionary?: IProcessDictionary[string]) => Promise<INewMediaItem | undefined>;
         }
     }
 
@@ -235,7 +289,7 @@ export interface ILogicModels {
 export interface ILogicModel {
     supportedHostName:string;
     category: string;
-    process: (inputUrl: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewPicture>;
+    process: (inputUrl: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewMediaItem>;
     newEntryParams?: IModelSpecialParam;
     specialSettings?: IModelSpecialParam;
     specialSettingValidityCheckArray?: IParamValidityCheck[];
@@ -287,7 +341,7 @@ export interface ILogicCategory {
     specialParamsDictionary?: IModelSpecialParam;
     specialSettingsDictionary?: IModelSpecialParam;
     specialSettingValidityCheck?: IParamValidityCheck[];
-    ProcessInput: (input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewPicture | undefined>
+    ProcessInput: (input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewMediaItem | undefined>
 
 }
 
@@ -305,11 +359,38 @@ export interface INewPic {
   }
   
 
-export interface INewPicture {
+  export interface IDBEntry {
+    id: string;
+    indexer: number;
+    //name?: string;
+    //hasVideo?: boolean;
+    media: IMediaItem[];
+    //alternative_names?: string[];
+    oldMedia?: IOldMedia[];
+    album: string;
+    //tags_pixiv?: string[];
+    //tags_danbooru?: string[];
+    //artists?: string[];
+    //storedResult?: string;
+    //links?: IPostLinks;
+    //ids?: IPostIds;
+    isHidden: boolean;
+    hasNSFW: boolean;
+    //hasResults?: boolean;
+    //pixiv_post_id?: number;
+
+    //compatability with INewAnimePic
+    //tags?: string[];
+    date_added?: number;
+    //date_created?: number;
+    //imageSize?: ISizeCalculationResult;
+}
+
+export interface INewMediaItem {
     //for mongo compatablity 
     id?: string;
     indexer: number;
-    imagesDataArray: IImageDataArray[];
+    media: IImageDataArray[];
     
     hasVideo?: boolean;
     album?: string;
@@ -344,7 +425,7 @@ export interface INewAnimePic {
     id?: string;
     indexer: number;
 
-    imagesDataArray: IImageDataArray[];
+    media: IImageDataArray[];
 
     
     
@@ -394,21 +475,12 @@ export interface IRequestOptions {
     providedHeaders?: RequestInit;
 }
 export interface IPostIds {
-    danbooru?: number;
-    yande?: number;
-    pixiv?: number;
-    line?: number;
+    [hostname:string]: string;
 }
 
 export interface IPostLinks {
-    pixiv?: string;
-    danbooru?: string;
-    yande?:string;
-    twitter?: string;
-    line?: string;
-    other?: string[];
+    [hostname:string]: string;
 }
-
 export interface IArtist {
     pixiv?: {
         userId: string;

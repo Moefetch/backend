@@ -12,38 +12,57 @@ export interface ISizeCalculationResult extends ISize {
 }
 
 
-export interface IImageDataArray  {
+export interface IMediaItem  {
+    file: string;
+    thumbnailFile?: string;
+    isVideo: boolean;
+    alternative_names?: string[];
+    imageSize?: ISizeCalculationResult;
+    index: number;
+	tags?: string[];
+	artists?: string[];
+	isNSFW?: boolean;
+	links?: IPostLinks;
+	ids?: IPostIds;
+	date_created?: number;
+	text?: string;
+}
+
+export interface IOldMedia  {
     file: string;
     isVideo: boolean;
-    thumbnail_file?: string;
+    thumbnailFile?: string;
     imageSize?: ISizeCalculationResult;
 }
+
 export interface IDBEntry {
     id: string;
     indexer: number;
-    name?: string;
-    hasVideo?: boolean;
-    imagesDataArray: IImageDataArray[];
-    alternative_names?: string[];
-    oldImagesDataArray?: IImageDataArray[];
+    //name?: string;
+    //hasVideo?: boolean;
+    media: IMediaItem[];
+    thumbnailFile: string;
+    //alternative_names?: string[];
+    oldMedia?: IOldMedia[];
     album: string;
     //tags_pixiv?: string[];
     //tags_danbooru?: string[];
-    artists?: string[];
-    storedResult?: string;
-    links?: IPostLinks;
-    ids?: IPostIds;
+    //artists?: string[];
+    //storedResult?: string;
+    //links?: IPostLinks;
+    //ids?: IPostIds;
     isHidden: boolean;
-    isNSFW: boolean;
-    hasResults?: boolean;
+    hasNSFW: boolean;
+    //hasResults?: boolean;
     //pixiv_post_id?: number;
 
     //compatability with INewAnimePic
-    tags?: string[];
+    //tags?: string[];
     date_added?: number;
-    date_created?: number;
+    //date_created?: number;
     //imageSize?: ISizeCalculationResult;
 }
+
 export interface IPostIds {
     [hostname:string]: string;
 }
@@ -51,8 +70,8 @@ export interface IPostIds {
 export interface IPostLinks {
     [hostname:string]: string;
 }
-@Entity({name:"IEntry"})
-export class IEntry implements IDBEntry {
+@Entity({name:"Entry"})
+export class Entry implements IDBEntry {
 
     @PrimaryColumn() 
     id: string;
@@ -66,9 +85,12 @@ export class IEntry implements IDBEntry {
     @Column({nullable: true})
     hasVideo: boolean;
 
-    @OneToMany((type) => IMedia, (media) => media.parentEntry, {cascade:['insert','recover','remove','update',"soft-remove"],eager:true})
-    imagesDataArray: IMedia[];
+    @OneToMany((type) => IMedia, (media) => media.parentEntry, {cascade: true ,eager:true})
+    media: IMedia[];
     
+    @Column({nullable:true})
+    thumbnailFile: string;
+
     @Column({nullable:true,type:"simple-array"})
     alternative_names?: string[];
     
@@ -94,7 +116,7 @@ export class IEntry implements IDBEntry {
     isHidden: boolean;
     
     @Column()
-    isNSFW: boolean;
+    hasNSFW: boolean;
     
     @Column({nullable:true})
     hasResults?: boolean;
@@ -109,7 +131,7 @@ export class IEntry implements IDBEntry {
     date_created?: number;
 }    
 @Entity({name:"IMedia"})
-export class IMedia implements IImageDataArray {
+export class IMedia implements IMediaItem {
     
     @PrimaryGeneratedColumn("uuid")
     id:string;
@@ -117,20 +139,47 @@ export class IMedia implements IImageDataArray {
     @Column()
     index:number;
     */
-    @ManyToOne((type) => IEntry, (entry) => entry.imagesDataArray, { onDelete: 'CASCADE' })
-    parentEntry: IEntry;
+    @ManyToOne((type) => Entry, (entry) => entry.media, { onDelete: 'CASCADE' })
+    parentEntry: Entry;
 
     @Column()
     file: string;
+    
+    @Column({nullable: true})
+    thumbnailFile?: string;
 
     @Column()
     isVideo: boolean;
 
-    @Column({nullable: true})
-    thumbnail_file?: string;
+    @Column({type:"simple-array", nullable: true})
+    alternative_names: string[];
 
     @Column({nullable: true, type:"simple-json"})
     imageSize?: ISize;
+
+    @Column()
+    index: number;
+
+    @Column({nullable:true, type:"simple-array"})
+	tags?: string[];
+
+    @Column({nullable:true, type:"simple-array"})
+	artists?: string[];
+
+    @Column({nullable:true})
+	isNSFW?: boolean;
+
+    @Column({nullable:true, type:"simple-json"})
+	links?: {[hostName:string]: string};
+
+    @Column({nullable:true, type:"simple-json"})
+	ids?: {[platfrom:string]: string};
+
+    @Column({nullable:true})
+	date_created?: number;
+
+    @Column({nullable:true})
+	text?: string;
 
 }
 
@@ -151,9 +200,12 @@ export function albumDBClass(albumName: string) {
         @Column({nullable: true})
         hasVideo: boolean;
 
-        @OneToMany((type) => Media, (media) => media.parentEntry, {cascade:['insert','recover','remove','update',"soft-remove"],eager:true})
-        imagesDataArray: Media[];
+        @OneToMany((type) => Media, (media) => media.parentEntry, {cascade:true ,eager:true})
+        media: Media[];
         
+        @Column({nullable:true})
+        thumbnailFile: string;
+
         @Column({nullable:true,type:"simple-array"})
         alternative_names?: string[];
         
@@ -164,38 +216,38 @@ export function albumDBClass(albumName: string) {
         album: string;
         
         @Column({type:"simple-array",nullable:true})
-    artists?: string[];
+        artists?: string[];
+        
+        @Column({nullable:true})
+        storedResult?: string;
+        
+        @Column({type:"simple-json",nullable:true})
+        links?: IPostLinks;
+        
+        @Column({type:"simple-json",nullable:true})
+        ids?: IPostIds;
+        
+        @Column()
+        isHidden: boolean;
+        
+        @Column()
+        hasNSFW: boolean;
+        
+        @Column({nullable:true})
+        hasResults?: boolean;
+        
+        @Column({type:"simple-array",nullable:true})
+        tags?: string[];
     
-    @Column({nullable:true})
-    storedResult?: string;
+        @Column()
+        date_added?: number;
     
-    @Column({type:"simple-json",nullable:true})
-    links?: IPostLinks;
-    
-    @Column({type:"simple-json",nullable:true})
-    ids?: IPostIds;
-    
-    @Column()
-    isHidden: boolean;
-    
-    @Column()
-    isNSFW: boolean;
-    
-    @Column({nullable:true})
-    hasResults?: boolean;
-    
-    @Column({type:"simple-array",nullable:true})
-    tags?: string[];
-
-    @Column()
-    date_added?: number;
-
-    @Column({nullable:true})
-    date_created?: number;
+        @Column({nullable:true})
+        date_created?: number;
     }    
 
     @Entity({name:"Media"})
-    class Media implements IImageDataArray {
+    class Media implements IMediaItem {
     
         @PrimaryGeneratedColumn("uuid")
         id:string;
@@ -203,22 +255,50 @@ export function albumDBClass(albumName: string) {
         @Column()
         index:number;
         */
-        @ManyToOne((type) => Entry, (entry) => entry.imagesDataArray, { onDelete: 'CASCADE',createForeignKeyConstraints:false})
+        @ManyToOne((type) => Entry, (entry) => entry.media, { onDelete: 'CASCADE' })
         parentEntry: Entry;
     
         @Column()
         file: string;
+        
+        @Column({nullable: true})
+        thumbnailFile?: string;
     
         @Column()
         isVideo: boolean;
     
-        @Column({nullable: true})
-        thumbnail_file?: string;
+        @Column({type:"simple-array", nullable: true})
+        alternative_names: string[];
     
         @Column({nullable: true, type:"simple-json"})
         imageSize?: ISize;
     
+        @Column()
+        index: number;
+    
+        @Column({nullable:true, type:"simple-array"})
+        tags?: string[];
+    
+        @Column({nullable:true, type:"simple-array"})
+        artists?: string[];
+    
+        @Column({nullable:true})
+        isNSFW?: boolean;
+    
+        @Column({nullable:true, type:"simple-json"})
+        links?: {[hostName:string]: string};
+    
+        @Column({nullable:true, type:"simple-json"})
+        ids?: {[platfrom:string]: string};
+    
+        @Column({nullable:true})
+        date_created?: number;
+    
+        @Column({nullable:true})
+        text?: string;
+    
     }
+    
     return {Entry,Media}
 }
 

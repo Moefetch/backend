@@ -3,9 +3,11 @@ import type {
     IAlbumDictionaryItem,
     IFilterObj,
     IAlbumDictionaryItemMongo,
-    IDBEntry,
     AlbumSchemaType,
-    ITagEntryMongo
+    ITagEntryMongo,
+    ISizeCalculationResult,
+    IPostLinks,
+    IPostIds
 } from "../types"
 import AlbumsDictionaryDB from "../models/MongoDBAlbumsDictionary";
 
@@ -14,6 +16,39 @@ import CreateTagsAutocompleteDBModel from "../models/schemas/CreateTagsAutocompl
 import CreateMongoDBEntryModel from "../models/schemas/CreateMongoDBEntryModel";
 import mongoose from "mongoose";
 
+
+interface IImageDataArray  {
+  file: string;
+  isVideo: boolean;
+  thumbnailFile?: string;
+  imageSize?: ISizeCalculationResult;
+}
+interface IDBEntry {
+  id: string;
+  indexer: number;
+  name?: string;
+  hasVideo: boolean;
+  imagesDataArray: IImageDataArray[];
+  alternative_names?: string[];
+  oldImagesDataArray?: IImageDataArray[];
+  album: string;
+  //tags_pixiv?: string[];
+  //tags_danbooru?: string[];
+  artists?: string[];
+  storedResult?: string;
+  links?: IPostLinks;
+  ids?: IPostIds;
+  isHidden: boolean;
+  isNSFW: boolean;
+  hasResults?: boolean;
+  //pixiv_post_id?: number;
+
+  //compatability with INewAnimePic
+  tags?: string[];
+  date_added?: number;
+  date_created?: number;
+  //imageSize?: ISizeCalculationResult;
+}
 
 let stroredModels: any = {
 

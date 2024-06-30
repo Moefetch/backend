@@ -1,10 +1,68 @@
 import type { 
-  IDBEntry,
   IAlbumDictionaryItem,
   IFilterObj,
   ITagEntry,
   AlbumSchemaType
 } from "../types";
+
+interface IPostIds {
+  danbooru?: number;
+  yande?: number;
+  pixiv?: number;
+  line?: number;
+}
+
+interface IPostLinks {
+  pixiv?: string;
+  danbooru?: string;
+  yande?:string;
+  twitter?: string;
+  line?: string;
+  other?: string[];
+}
+
+interface ISize {
+  width: number | undefined;
+  height: number | undefined;
+  orientation?: number;
+  type?: string;
+}
+interface ISizeCalculationResult extends ISize {
+  images?: ISize[];
+}
+
+interface IImageDataArray  {
+  file: string;
+  isVideo: boolean;
+  thumbnailFile?: string;
+  imageSize?: ISizeCalculationResult;
+}
+export interface INeDBEntry {
+  id: string;
+  indexer: number;
+  name?: string;
+  hasVideo: boolean;
+  imagesDataArray: IImageDataArray[];
+  alternative_names?: string[];
+  oldImagesDataArray?: IImageDataArray[];
+  album: string;
+  //tags_pixiv?: string[];
+  //tags_danbooru?: string[];
+  artists?: string[];
+  storedResult?: string;
+  links?: IPostLinks;
+  ids?: IPostIds;
+  isHidden: boolean;
+  isNSFW: boolean;
+  hasResults?: boolean;
+  //pixiv_post_id?: number;
+
+  //compatability with INewAnimePic
+  tags?: string[];
+  date_added?: number;
+  date_created?: number;
+  //imageSize?: ISizeCalculationResult;
+}
 
 import nedb from "nedb";
 import settings from "../settings";
@@ -19,9 +77,9 @@ let stroredAlbumDBs: any = {
 
 };
 
-function albumsDictionaryMap(name: string): nedb<IDBEntry> {
+function albumsDictionaryMap(name: string): nedb<INeDBEntry> {
   if (!stroredAlbumDBs[name]) {
-    const album = new nedb<IDBEntry>(`${baseDBURL}/AlbumFolder/${name}.db`);
+    const album = new nedb<INeDBEntry>(`${baseDBURL}/AlbumFolder/${name}.db`);
     album.loadDatabase()
     stroredAlbumDBs[name] = album;
   }
@@ -86,7 +144,7 @@ export default class MongoDatabaseLogic {
   /**
   * get Entries and filter
   */
-  public async getEntriesInAlbumByNameAndFilter(albumName: string, initialFilterObject: IFilterObj, sortObj?: any): Promise<IDBEntry[]> {
+  public async getEntriesInAlbumByNameAndFilter(albumName: string, initialFilterObject: IFilterObj, sortObj?: any): Promise<INeDBEntry[]> {
     const filterObject: any = {
     }
     initialFilterObject.nameIncludes? filterObject.name = {$in: initialFilterObject.nameIncludes} : {};
@@ -95,7 +153,7 @@ export default class MongoDatabaseLogic {
     (initialFilterObject.showHidden) ? {} : (filterObject.isHidden = false);
     (initialFilterObject.showNSFW ) ? {} : (filterObject.isNSFW = false);
 
-      return new Promise<IDBEntry[]>((resolve, reject) => {
+      return new Promise<INeDBEntry[]>((resolve, reject) => {
           
         albumsDictionaryMap(albumName).find(filterObject).sort(sortObj).exec( (err, docs) => {
           if (!err) resolve(docs)
@@ -109,7 +167,7 @@ export default class MongoDatabaseLogic {
   /**
   * get Entries and filter
   */
-  public async getEntriesInAlbumByUUIDAndFilter(albumUUID: string, initialFilterObject: IFilterObj, sortObj?: any): Promise<IDBEntry[]> {
+  public async getEntriesInAlbumByUUIDAndFilter(albumUUID: string, initialFilterObject: IFilterObj, sortObj?: any): Promise<INeDBEntry[]> {
     const filterObject: any = {
     }
     initialFilterObject.nameIncludes? filterObject.name = {$in: initialFilterObject.nameIncludes} : {};
@@ -118,7 +176,7 @@ export default class MongoDatabaseLogic {
     (initialFilterObject.showHidden) ? {} : (filterObject.isHidden = false);
     (initialFilterObject.showNSFW ) ? {} : (filterObject.isNSFW = false);
 
-      return new Promise<IDBEntry[]>((resolve, reject) => {
+      return new Promise<INeDBEntry[]>((resolve, reject) => {
         AlbumsDictionaryDB.findOne({
           uuid: albumUUID,
         }, (err, doc) => {
@@ -137,7 +195,7 @@ export default class MongoDatabaseLogic {
   /**
   * updateEntry
   */
-  public updateEntry(albumName: string, entryOBJ: IDBEntry) {
+  public updateEntry(albumName: string, entryOBJ: INeDBEntry) {
   
   const newModelEntry = albumsDictionaryMap(albumName);
   return new Promise((resolve, reject) => {
@@ -178,13 +236,13 @@ export default class MongoDatabaseLogic {
   /**
   * addPicture
   */
-  public addEntry(album: string, entryOBJ: IDBEntry, type: AlbumSchemaType) {
+  public addEntry(album: string, entryOBJ: INeDBEntry, type: AlbumSchemaType) {
     const convertedEntry = this.convertINewPicToIEntry(entryOBJ)
     const newModelEntry = albumsDictionaryMap(album);
     if (convertedEntry.tags) {
       convertedEntry.tags.forEach(tag => this.addTagEntry(tag, type))
     }
-    return new Promise<IDBEntry>((resolve, reject) => newModelEntry.insert(convertedEntry, (err, doc) => {
+    return new Promise<INeDBEntry>((resolve, reject) => newModelEntry.insert(convertedEntry, (err, doc) => {
       err ? reject(err) : resolve(doc) 
       })
     );
@@ -199,7 +257,7 @@ export default class MongoDatabaseLogic {
   delete exportEntry.urlsArray;
   delete exportEntry.requestOptions;
   delete exportEntry.imageSize;
-  return exportEntry as IDBEntry;
+  return exportEntry as INeDBEntry;
  }
 
   /**

@@ -1,9 +1,9 @@
 import "reflect-metadata"
-import { ArrayContains, DataSource, DataSourceOptions, Entity, Equal, Like, QueryRunner } from "typeorm"
+import { ArrayContains, DataSource, DataSourceOptions, Equal, Like } from "typeorm"
 import { Album } from "../TypeORMEntities/Albums";
-import { albumDBClass,IDBEntry, IEntry } from "../TypeORMEntities/Entry";
+import { albumDBClass, IDBEntry } from "../TypeORMEntities/Entry";
 import { Tag } from "../TypeORMEntities/Tags";
-import { AlbumSchemaType, IAlbumDictionaryItem, IFilterObj, ISettings } from "types";
+import { AlbumSchemaType, IAlbumDictionaryItem, IFilterObj } from "types";
 
 
 const doc1 = {
@@ -94,12 +94,14 @@ export class TypeORMInterface {
         Albums.forEach(a=>{
             const {Entry, Media} = albumDBClass(a.name);
             this.entities[a.name] = Entry;
-            this.dbConnectionOptions.entities.push(this.entities[a.name]);
+            this.dbConnectionOptions.entities.push(Entry);
             this.dbConnectionOptions.entities.push(Media);
         })
             await DataSource.destroy()
         })
+        
         this.appDataSource = new DataSource(this.dbConnectionOptions as DataSourceOptions);
+        
         await this.appDataSource.initialize();   
     }
     public appDataSource: DataSource;
@@ -278,9 +280,13 @@ export class TypeORMInterface {
   public addEntry(albumName: string, entryOBJ: IDBEntry, type: AlbumSchemaType) {
     const convertedEntry = this.convertINewPicToIEntry(entryOBJ)
     const newModelEntry = this.entities[albumName];
-    if (convertedEntry.tags) {
-      convertedEntry.tags.forEach(tag => this.addTagEntry(tag, type))
-    }
+    convertedEntry.media.forEach(m=>{
+
+      if (m.tags) {
+        m.tags.forEach(tag => this.addTagEntry(tag, type))
+      }
+    })
+    
     const newEntry = new newModelEntry();
     
     for (const key in convertedEntry) {
@@ -290,7 +296,7 @@ export class TypeORMInterface {
     }
 
     return this.appDataSource.manager.save(newEntry);
-  }
+  }/* 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.commitTransaction();
     await queryRunner.query(`PRAGMA foreign_keys = OFF`);
@@ -306,7 +312,7 @@ export class TypeORMInterface {
     await queryRunner.commitTransaction();
     await queryRunner.query(`PRAGMA foreign_keys = ON`);
     await queryRunner.startTransaction();
-  }
+  } */
   /**
    * addTagEntry
    */

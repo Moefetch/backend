@@ -1,5 +1,5 @@
 import fs, { ReadStream } from "fs";
-import { IProcessDictionary, ICategoryDictionary, ILogicCategory, ILogicCategorySpecialParamsDictionary, ILogicModels, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, IModelSpecialParam, IParam, IParamValidityCheck, IPicFormStockOverrides, ISettings, INewPicture } from "types";
+import { IProcessDictionary, ICategoryDictionary, ILogicCategory, ILogicCategorySpecialParamsDictionary, ILogicModels, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, IModelSpecialParam, IParam, IParamValidityCheck, IPicFormStockOverrides, ISettings, INewMediaItem } from "types";
 import settings from "../settings";
 import Utility from "./Utility";
 export class Logic {
@@ -25,7 +25,7 @@ export class Logic {
      */
     public async ProcessInput(input: string | Express.Multer.File, type: string, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides) {
         let categoryDictionary = this.categoryDictionary[type]
-        let resultantData: INewPicture | undefined;
+        let resultantData: INewMediaItem | undefined;
         let inputToProcess: string | Express.Multer.File | undefined = undefined;
         if (typeof input == "string" && ~input.search(/^https?:\/\//)) { // string mught be path
             const {hostname} = new URL(input)
@@ -43,12 +43,12 @@ export class Logic {
          
         if (resultantData && resultantData.urlsArray?.length) {
 
-            if (!resultantData.imagesDataArray.length) {  
+            if (!resultantData.media.length) {  
                 const res = await this.utility.downloadAndGetFilePaths(resultantData, album, this.settings.downloadFolder, {providedFileNames: stockOptionalOverrides.useProvidedFileName.textField?.value.split('\n')})
-                if ( res ) resultantData.imagesDataArray = res
+                if ( res ) resultantData.media = res
             }
-            if (resultantData.imagesDataArray.length == 1) {
-                resultantData.thumbnailFile = resultantData.imagesDataArray[0].thumbnail_file;
+            if (resultantData.media.length == 1) {
+                resultantData.thumbnailFile = resultantData.media[0].thumbnailFile;
             } else if (!resultantData.thumbnailFile && resultantData.thumbnailURL) {//same here
                 resultantData.thumbnailFile = await this.utility.downloadFromUrl(
                     resultantData.thumbnailURL, 
@@ -61,10 +61,10 @@ export class Logic {
                 )
                 
             } //else if (!resultantData.thumbnailFile && !resultantData.imagesDataArray[resultantData.indexer].isVideo && !resultantData.imagesDataArray[resultantData.indexer].thumbnail_file) resultantData.thumbnailURL = resultantData.imagesDataArray[resultantData.indexer].file
-            else resultantData.thumbnailURL = resultantData.imagesDataArray[resultantData.indexer].thumbnail_file
+            else resultantData.thumbnailURL = resultantData.media[resultantData.indexer].thumbnailFile
         }
 
-        if (resultantData?.imagesDataArray.length) return resultantData
+        if (resultantData?.media.length) return resultantData
 
     }    
 

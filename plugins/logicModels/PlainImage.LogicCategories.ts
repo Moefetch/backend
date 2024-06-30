@@ -1,6 +1,6 @@
 import fs, { ReadStream } from "fs";
 import Utility from "src/Utility";
-import { ILogicModels, ILogicCategorySpecialParamsDictionary, IModelDictionary, INewPicture, IPicFormStockOverrides, ISettings, IProcessDictionary, IModelSpecialParam } from "types";
+import { ILogicModels, ILogicCategorySpecialParamsDictionary, IModelDictionary, INewMediaItem, IPicFormStockOverrides, ISettings, IProcessDictionary, IModelSpecialParam } from "types";
 
 export default class LogicModel implements ILogicModels {
     public processDictionary: IProcessDictionary;
@@ -17,11 +17,11 @@ export default class LogicModel implements ILogicModels {
       }
     }
     public async ProcessInput(input: string | Express.Multer.File, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides:IPicFormStockOverrides){
-        let resultantData: INewPicture | undefined = {
+        let resultantData: INewMediaItem | undefined = {
             data: {},
             indexer: 0,
             isNSFW: false,
-            imagesDataArray: []
+            media: []
           };
           
           if (typeof input == "string" && ~input.search(/^https?:\/\//)){
@@ -38,7 +38,7 @@ export default class LogicModel implements ILogicModels {
             const isVideo = input.mimetype.includes("video");
             const thumbnail_file = isVideo ? "album_thumbnail_files/video.svg" : newPath
             resultantData = {
-              data: {}, indexer: 0, imagesDataArray: [{file: newPath, isVideo: isVideo, thumbnail_file: thumbnail_file}], hasVideo: isVideo, thumbnailFile: thumbnail_file 
+              data: {}, indexer: 0, media: [{file: newPath, isVideo: isVideo, thumbnailFile: thumbnail_file}], hasVideo: isVideo, thumbnailFile: thumbnail_file 
             }
           }
         return resultantData;
@@ -47,12 +47,12 @@ export default class LogicModel implements ILogicModels {
     private async processUrl(url: string, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides, type: string)  {
         //i need to do something about thumbnails
       const imageProps = type == 'image' ? await this.utility.getImageResolution(url) : undefined; // i need to fix this to support video      
-        let resultantData: INewPicture | undefined = {
+        let resultantData: INewMediaItem | undefined = {
           data: {},
           storedResult: "plain",
           indexer: 0,
           isNSFW: false,
-          imagesDataArray: [],
+          media: [],
           urlsArray: [{
               imageUrl:url, 
               thumbnailUrl: type !== 'image' ? url : '',
@@ -70,14 +70,14 @@ export default class LogicModel implements ILogicModels {
         const path = await this.utility.downloadFromUrl(url, this.settings.downloadFolder, `/saved_pictures/${album}`, {
           providedFileName: providedFileName, providedFileExtension: providedFileExtension
         })
-        resultantData.imagesDataArray = [{
+        resultantData.media = [{
           file: path, 
           isVideo: type !== 'image', 
           imageSize: {
             height: imageProps?.imageSize.height || 0, 
             width: imageProps?.imageSize.width || 0
           },
-          thumbnail_file: type == 'image' ? path : 'album_thumbnail_files/video.svg',
+          thumbnailFile: type == 'image' ? path : 'album_thumbnail_files/video.svg',
         }]
         resultantData.thumbnailFile = type == 'image' ? path : 'album_thumbnail_files/video.svg';
         resultantData.links = {};

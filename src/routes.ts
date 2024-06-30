@@ -1,7 +1,7 @@
 import "reflect-metadata" //for typeORM
 import { v4 as uuidv4 } from "uuid";
 import express from "express";
-import { IReqFile, AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, INewPic, INewPicture, IParam, IPicFormStockOverrides, ISettings } from "types";
+import { IReqFile, AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, INewPic, INewMediaItem, IParam, IPicFormStockOverrides, ISettings, IMediaItem } from "types";
 import fs from "fs";
 import MongoDatabaseLogic from "./mongoDatabaseLogic";
 import {Logic} from "./Logic"
@@ -10,6 +10,7 @@ import { TypeORMInterface } from "./typeORMDatabaseLogic";
 import settings from "../settings";
 import { upload } from "../middlewares/upload";
 import { isDeepStrictEqual } from "util";
+import Utility from "./Utility";
 let logic = new Logic(settings);
 
 /* 
@@ -142,21 +143,24 @@ export async function initialize() {
     });
   
     router.post("/add-pictures", upload.array("temp_download"), async (req, res) => {
+
       let newEntries: IDBEntry[] = [];
       const body: INewPic[] = JSON.parse(req.body.entries);
   
       const filePathDict: {[name: string]: Express.Multer.File} = {}
-      const reqFiles: Express.Multer.File[] | undefined = req.files as  Express.Multer.File[] | undefined
+      const reqFiles: Express.Multer.File[] | undefined = req.files as  Express.Multer.File[] | undefined;
+
       const fileCount  = reqFiles?.length
       if (reqFiles && fileCount) {
         reqFiles.forEach(file => filePathDict[file.originalname] = file)
       }
-  
+      //individual entry FOR LOOP START
       for (let newEntry = 0; newEntry < body.length; newEntry++) {
         let addTagsArrayPerEntry: string[] | undefined = undefined;
         let addidsArrayPerEntry: string[] | undefined = undefined;
         let providedFileNamePerEntry: string[] | undefined = undefined;
         let stockOptionalOverridesPerEntry: IPicFormStockOverrides | undefined;
+        let specifiedThumbnail: string = "";
         const { url, album, type, files, isHidden, optionalOverrideParams, stockOptionalOverrides } = body[newEntry]; //remember to do .split('\n') and for each to get the stuff bla bla
         if (stockOptionalOverrides) {
           
@@ -174,16 +178,23 @@ export async function initialize() {
             compileAllLinksIntoOneEntry: JSON.parse(JSON.stringify(stockOptionalOverrides.compileAllLinksIntoOneEntry)),
             useProvidedFileName: JSON.parse(JSON.stringify(stockOptionalOverrides.useProvidedFileName)),
           }
+
+          if (stockOptionalOverrides.thumbnailFile.textField.value) {
+            specifiedThumbnail = await (new Utility()).downloadFromUrl(stockOptionalOverrides?.thumbnailFile?.textField?.value, this.settings.downloadFolder, 
+              `/saved_pictures_thumbnails/${album}`, {providedFileName: uuidv4()+'_thumbnail'})
+          }
         }
         
         
         let addedPicsArray: IDBEntry[] = [];
-        let compiledEntry: INewPicture = {
+        const multipleIntoOne: IDBEntry = {
+          album: album, id: uuidv4(), indexer:0, media: [], isHidden: false, hasNSFW:false, thumbnailFile: "",
+        }
+        let compiledEntry: INewMediaItem = {
               data:{},
-              imagesDataArray:[],
+              media:[],
               indexer:0,
-              ids: {},
-              links: {},
+              date_added: (new Date()).getTime(),
               isMultiSource: stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue,
             };
             let arrayOfInputs: string[] | Express.Multer.File[] = [];
@@ -193,29 +204,47 @@ export async function initialize() {
         if (arrayOfInputs) {
           
           const forLoopPromise = new Promise<IDBEntry[]>(async (resolve, reject) => {
+
+            // individiual link/file looping
             for (let i = 0; i < arrayOfInputs.length; i++) {
               const value = arrayOfInputs[i];
              await new Promise<void>((resolve, reject) => setTimeout(() => {resolve()}, 100)) //just wait a bit
-             if (stockOptionalOverridesPerEntry) {
-              
+             
+             if (stockOptionalOverridesPerEntry) { 
                if (stockOptionalOverridesPerEntry.addId.textField && addidsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addId.textField.value = addidsArrayPerEntry[ (i > addidsArrayPerEntry.length) ? (addidsArrayPerEntry.length - 1) : i];
                if (stockOptionalOverridesPerEntry.addTags.textField && addTagsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addTags.textField.value = addTagsArrayPerEntry[ (i > addTagsArrayPerEntry.length) ? (addTagsArrayPerEntry.length - 1) : i];
                if (stockOptionalOverridesPerEntry.useProvidedFileName.textField && providedFileNamePerEntry?.length) stockOptionalOverridesPerEntry.useProvidedFileName.textField.value = providedFileNamePerEntry[ (i > providedFileNamePerEntry.length) ? (providedFileNamePerEntry.length - 1) : i];
-               
               }
+              
               const entry = await logic.ProcessInput(value, type, album, optionalOverrideParams ?? {}, stockOptionalOverridesPerEntry as IPicFormStockOverrides);
-              console.log(`${i} / ${arrayOfInputs.length}`);
-              let hasVideo = false;
-              if (entry && entry.imagesDataArray?.length) {
-                hasVideo = !!entry.imagesDataArray.filter(fl => fl.isVideo).length
-      
+              if (entry && entry.media?.length) {
                 if (stockOptionalOverridesPerEntry?.addTags.textField?.value) {
                   entry.tags = entry.tags ? [...entry.tags, ...(stockOptionalOverridesPerEntry.addTags.textField.value as any).replaceAll(' ', "").split(',')] : (stockOptionalOverridesPerEntry.addTags.textField.value as any).replaceAll(' ', "").split(',');
                 }
       
+                const dbEntry: IDBEntry = {
+                  album: album,
+                  hasNSFW: entry.isNSFW,
+                  id: uuidv4(),
+                  indexer: entry.indexer,
+                  thumbnailFile: entry.thumbnailFile,
+                  date_added: (new Date()).getTime(),
+                  isHidden: !!isHidden,
+                  media: entry.media.map((m: IMediaItem)=>{
+                    m.tags = entry.tags;
+                    m.isNSFW = entry.isNSFW;
+                    m.artists = entry.artists;
+                    m.date_created = entry.date_created;
+                    m.links = entry.links;
+                    m.ids = entry.ids;
+                    m.date_created = entry.date_created;
+                    return m
+                  })
+                }
                 if (stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue) {
-                  compiledEntry.imagesDataArray = compiledEntry.imagesDataArray.concat(entry.imagesDataArray);
-                  compiledEntry.urlsArray = entry.urlsArray ? compiledEntry.urlsArray?.concat(entry.urlsArray) : compiledEntry.urlsArray;
+                  //compiledEntry.media = compiledEntry.media.concat(entry.media);
+                  multipleIntoOne.media.push(...dbEntry.media)
+                  /* compiledEntry.urlsArray = entry.urlsArray ? compiledEntry.urlsArray?.concat(entry.urlsArray) : compiledEntry.urlsArray;
                   entry.ids ? Object.assign(compiledEntry.ids, {[i]:  entry.ids})      : {};
                   entry.links ? Object.assign(compiledEntry.links, {[i]:  entry.links}) : {};
                   compiledEntry.hasVideo = compiledEntry.hasVideo ?? hasVideo;
@@ -226,28 +255,28 @@ export async function initialize() {
                   if (entry.artists) {
                     compiledEntry.artists = compiledEntry.artists ? compiledEntry.artists.concat(entry.artists) : entry.artists
                   }
-                  
+                   */
                 } else {
-                  await database.addEntry(album, {
-                    ...entry,
-                    isNSFW: entry.isNSFW ?? false,
-                    id: uuidv4(),
-                    hasVideo: hasVideo,
-                    album: album,
-                    date_added: (new Date()).getTime(),
-                    isHidden: !!isHidden
-                  }, type)
+                  dbEntry.media.map((media,index)=>{
+                    media.index = index;
+                    return media
+                  });
+                  await database.addEntry(album, dbEntry, type)
                   .then(res => addedPicsArray.push(res))
                   .catch(console.log)
                 }
               }
               if (i == arrayOfInputs.length - 1) {
                 if (stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue) {      
+                  multipleIntoOne.media.map((media,index)=>{
+                    media.index = index;
+                    return media
+                  })
                   await database.addEntry(album, {
-                    ...compiledEntry,
-                    isNSFW: compiledEntry.isNSFW ?? false,
+                    ...multipleIntoOne,
+                    hasNSFW: multipleIntoOne.hasNSFW ?? false,
                     id: uuidv4(),
-                    hasVideo: hasVideo,
+                    thumbnailFile: specifiedThumbnail || multipleIntoOne.media[0].thumbnailFile,
                     album: album,
                     date_added: (new Date()).getTime(),
                     isHidden: !!isHidden
@@ -378,6 +407,7 @@ export async function initialize() {
             const entries = await neDBConnection.getEntriesInAlbumByNameAndFilter(album.name,{showHidden:true,showNSFW:true});
             for (let ii = 0; ii < entries.length; ii++) {
               const entry = entries[ii];
+              
               await database.addEntry(album.name, (entry as any), album.type)
             }
             if (i == (albums.length -1)) {
