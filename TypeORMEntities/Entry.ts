@@ -85,10 +85,10 @@ export class Entry implements IDBEntry {
     @Column({nullable: true})
     hasVideo: boolean;
 
-    @OneToMany((type) => IMedia, (media) => media.parentEntry, {cascade: true ,eager:true})
+    @OneToMany((type) => IMedia, (media) => media.parentEntry, {cascade: true ,eager:true, createForeignKeyConstraints:false})
     media: IMedia[];
     
-    @Column({nullable:true})
+    @Column()
     thumbnailFile: string;
 
     @Column({nullable:true,type:"simple-array"})
@@ -139,7 +139,7 @@ export class IMedia implements IMediaItem {
     @Column()
     index:number;
     */
-    @ManyToOne((type) => Entry, (entry) => entry.media, { onDelete: 'CASCADE' })
+    @ManyToOne((type) => Entry, (entry) => entry.media, { onDelete: 'CASCADE' ,createForeignKeyConstraints:false})
     parentEntry: Entry;
 
     @Column()
@@ -200,10 +200,10 @@ export function albumDBClass(albumName: string) {
         @Column({nullable: true})
         hasVideo: boolean;
 
-        @OneToMany((type) => Media, (media) => media.parentEntry, {cascade:true ,eager:true})
+        @OneToMany((type) => Media, (media) => media.parentEntry, {cascade:true ,eager:true, createForeignKeyConstraints:false})
         media: Media[];
         
-        @Column({nullable:true})
+        @Column()
         thumbnailFile: string;
 
         @Column({nullable:true,type:"simple-array"})
@@ -255,7 +255,7 @@ export function albumDBClass(albumName: string) {
         @Column()
         index:number;
         */
-        @ManyToOne((type) => Entry, (entry) => entry.media, { onDelete: 'CASCADE' })
+        @ManyToOne((type) => Entry, (entry) => entry.media, { onDelete: 'CASCADE' , createForeignKeyConstraints:false})
         parentEntry: Entry;
     
         @Column()

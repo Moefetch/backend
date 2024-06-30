@@ -281,8 +281,7 @@ export class TypeORMInterface {
     const convertedEntry = this.convertINewPicToIEntry(entryOBJ)
     const newModelEntry = this.entities[albumName];
     convertedEntry.media.forEach(m=>{
-
-      if (m.tags) {
+      if (m.tags) {        
         m.tags.forEach(tag => this.addTagEntry(tag, type))
       }
     })

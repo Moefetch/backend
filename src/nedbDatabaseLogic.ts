@@ -34,7 +34,7 @@ interface ISizeCalculationResult extends ISize {
 interface IImageDataArray  {
   file: string;
   isVideo: boolean;
-  thumbnailFile?: string;
+  thumbnail_file?: string;
   imageSize?: ISizeCalculationResult;
 }
 export interface INeDBEntry {
@@ -44,6 +44,7 @@ export interface INeDBEntry {
   hasVideo: boolean;
   imagesDataArray: IImageDataArray[];
   alternative_names?: string[];
+  thumbnailFile: string;
   oldImagesDataArray?: IImageDataArray[];
   album: string;
   //tags_pixiv?: string[];

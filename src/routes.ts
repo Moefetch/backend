@@ -402,13 +402,34 @@ export async function initialize() {
         for (let i = 0; i < albums.length; i++) {
           const album = albums[i];
            album.id = album.uuid
-            console.log(database.appDataSource.entityMetadatas.length);
             await database.createAlbum(album);
             const entries = await neDBConnection.getEntriesInAlbumByNameAndFilter(album.name,{showHidden:true,showNSFW:true});
             for (let ii = 0; ii < entries.length; ii++) {
               const entry = entries[ii];
-              
-              await database.addEntry(album.name, (entry as any), album.type)
+              const convertedEntry:IDBEntry = {
+                album:entry.album,
+                hasNSFW:entry.isNSFW,
+                id: entry.id,
+                indexer: entry.indexer,
+                isHidden: entry.isHidden,
+                thumbnailFile: entry.imagesDataArray[entry.indexer].thumbnail_file || entry.thumbnailFile || "album_thumbnail_files/video.svg",
+                date_added: entry.date_added,
+                media: entry.imagesDataArray.map<IMediaItem>((media,index)=>({
+                  file: media.file,
+                  index:index,
+                  isVideo: media.isVideo,
+                  thumbnailFile: media.thumbnail_file,
+                  imageSize: media.imageSize,
+                  artists: entry.artists,
+                  isNSFW: entry.isNSFW,
+                  links: ((entry.links?.other ? entry.links?.other[0] : undefined) || entry.links) as IMediaItem['links'],
+                  ids: entry.ids as IMediaItem['ids'],
+                  tags: entry.tags,
+                  date_created: entry.date_created,
+                  alternative_names: entry.alternative_names
+                }))
+              } ;
+              await database.addEntry(album.name, convertedEntry, album.type)
             }
             if (i == (albums.length -1)) {
               resolve(null)
