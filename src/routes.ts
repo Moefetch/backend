@@ -325,7 +325,6 @@ export async function initialize() {
   
     router.post("/connection-test", async (req, res) => {
       const {
-        legacyMongoDB,
         stock_settings,
         database,
         special_settings,
@@ -334,13 +333,11 @@ export async function initialize() {
         
   
         const responseSettings: {
-          legacyMongoDB: IParam;
           database: ISettings['database'];
           stock_settings: ISettings['stock_settings'];
           special_settings: ISettings['special_settings'];
           special_params: ISettings['special_params'];
         } = {
-          legacyMongoDB: legacyMongoDB,
           database,
           stock_settings,
           special_settings,
@@ -381,7 +378,7 @@ export async function initialize() {
       saveSettings();
       return res.status(200).json(errorsObject);
     });
-    
+
     router.get("/types-of-models", async (req, res) => {
       return res.status(200).json(logic.supportedTypes);
     });

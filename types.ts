@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import Utility from './src/Utility'
 
 export interface ISaucenaoResData{
@@ -47,15 +46,6 @@ export interface IFilteredSaucenaoResult  {
     imageSize?: ISizeCalculationResult;
 }
 
-export interface IAlbumDictionaryItemMongo extends mongoose.Document {
-    albumCoverImage: string;
-    name: string;
-    estimatedPicCount?: number;
-    uuid: string;
-    type: AlbumSchemaType;
-    isHidden: boolean;
-
-}
 
 export type AlbumSchemaType = string;
 
@@ -73,11 +63,6 @@ export interface ITagEntry {
     _id: string;
     tag: string;
 }
-export interface ITagEntryMongo extends mongoose.Document {
-    _id: string;
-    tag: string;
-}
-
 
 export interface IFilterObj {
     nameIncludes?: string;
@@ -162,34 +147,6 @@ export interface INeDBEntry {
     indexer: number;
     name?: string;
     hasVideo: boolean;
-    imagesDataArray: IImageDataArray[];
-    alternative_names?: string[];
-    oldImagesDataArray?: IImageDataArray[];
-    album: string;
-    //tags_pixiv?: string[];
-    //tags_danbooru?: string[];
-    artists?: string[];
-    storedResult?: string;
-    links?: IPostLinks;
-    ids?: IPostIds;
-    isHidden: boolean;
-    isNSFW: boolean;
-    hasResults?: boolean;
-    //pixiv_post_id?: number;
-
-    //compatability with INewAnimePic
-    tags?: string[];
-    date_added?: number;
-    date_created?: number;
-    //imageSize?: ISizeCalculationResult;
-}
-
-export interface IMongoDBEntry extends mongoose.Document {
-    id: string;
-    indexer: number;
-    hasVideo: boolean;
-
-    name?: string;
     imagesDataArray: IImageDataArray[];
     alternative_names?: string[];
     oldImagesDataArray?: IImageDataArray[];
@@ -513,7 +470,6 @@ export interface IErrorObject {
 }
 
 export interface IResponseSettings {
-    legacyMongoDB: IParam;
     stock_settings: ISettings['stock_settings'];
     special_settings: ISettings['special_settings'];
     special_params: ISettings['special_params'];
