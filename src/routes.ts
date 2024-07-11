@@ -3,9 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import express from "express";
 import { IReqFile, AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, INewPic, INewMediaItem, IParam, IPicFormStockOverrides, ISettings, IMediaItem } from "types";
 import fs from "fs";
-import MongoDatabaseLogic from "./mongoDatabaseLogic";
 import {Logic} from "./Logic"
-import NeDBDatabaseLogic from "./nedbDatabaseLogic";
 import { TypeORMInterface } from "./typeORMDatabaseLogic";
 import settings from "../settings";
 import { upload } from "../middlewares/upload";
@@ -92,7 +90,6 @@ const databaseConnectionOptionsDefault = {
 const databasePromise = TypeORMInterface.init(databaseConnectionOptionsDefault);
 
 //const database = (settings.database_url.checkBox?.checkBoxValue && settings.database_url.textField?.value) ? (new MongoDatabaseLogic(settings.database_url.textField.value, logic.supportedTypes)) : (new NeDBDatabaseLogic(logic.supportedTypes)) ;
-const neDBConnection = new NeDBDatabaseLogic(logic.supportedTypes)
 const router = express.Router();
 
 function saveSettings() {
@@ -356,18 +353,6 @@ export async function initialize() {
         responseSettings: responseSettings,
       }  
       
-      if (responseSettings.legacyMongoDB.checkBox?.checkBoxValue && responseSettings.legacyMongoDB.textField?.value) {
-        const canConnect = await MongoDatabaseLogic.testMongoDBConnection(responseSettings.legacyMongoDB.textField?.value);
-        if (canConnect) {  
-          settings.legacyMongoDB = responseSettings.legacyMongoDB;
-          responseSettings.legacyMongoDB.errorMessage = "";
-        }
-        else {
-          errorsObject.hasError = true;
-          responseSettings.legacyMongoDB.errorMessage = "Unable to connect to database"
-        }
-      } else settings.legacyMongoDB.checkBox = {checkBoxValue: false, defaultValue: false, checkBoxDescription: ""}
-      
       settings.stock_settings = responseSettings.stock_settings;
       const arrayLength = logic.specialSettingValidityCheck.length;
       if (logic.specialSettingValidityCheck.length && (settings.special_params && errorsObject.responseSettings.special_params) && (settings.special_settings && errorsObject.responseSettings.special_settings)) {
@@ -396,49 +381,7 @@ export async function initialize() {
       saveSettings();
       return res.status(200).json(errorsObject);
     });
-    router.post("/migrate-database",async (req, res) => {
-      const albums = await neDBConnection.getAlbums(true);
-      const addAllAlbums = new Promise(async (resolve,reject)=>{
-        for (let i = 0; i < albums.length; i++) {
-          const album = albums[i];
-           album.id = album.uuid
-            await database.createAlbum(album);
-            const entries = await neDBConnection.getEntriesInAlbumByNameAndFilter(album.name,{showHidden:true,showNSFW:true});
-            for (let ii = 0; ii < entries.length; ii++) {
-              const entry = entries[ii];
-              const convertedEntry:IDBEntry = {
-                album:entry.album,
-                hasNSFW:entry.isNSFW,
-                id: entry.id,
-                indexer: entry.indexer,
-                isHidden: entry.isHidden,
-                thumbnailFile: entry.imagesDataArray[entry.indexer].thumbnail_file || entry.thumbnailFile || "album_thumbnail_files/video.svg",
-                date_added: entry.date_added,
-                media: entry.imagesDataArray.map<IMediaItem>((media,index)=>({
-                  file: media.file,
-                  index:index,
-                  isVideo: media.isVideo,
-                  thumbnailFile: media.thumbnail_file,
-                  imageSize: media.imageSize,
-                  artists: entry.artists,
-                  isNSFW: entry.isNSFW,
-                  links: ((entry.links?.other ? entry.links?.other[0] : undefined) || entry.links) as IMediaItem['links'],
-                  ids: entry.ids as IMediaItem['ids'],
-                  tags: entry.tags,
-                  date_created: entry.date_created,
-                  alternative_names: entry.alternative_names
-                }))
-              } ;
-              await database.addEntry(album.name, convertedEntry, album.type)
-            }
-            if (i == (albums.length -1)) {
-              resolve(null)
-            }
-        }
-      })
-      await addAllAlbums;
-      return res.status(200);
-    })
+    
     router.get("/types-of-models", async (req, res) => {
       return res.status(200).json(logic.supportedTypes);
     });

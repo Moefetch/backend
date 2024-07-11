@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "dev": "ts-node makeSureMongoDbIsRunning.ts || start_mongodb.bat.lnk & cross-env NODE_ENV=development ts-node index.ts",
+    "dev": "cross-env NODE_ENV=development ts-node index.ts",
     "buildWin": "tsc -p tsconfig.json & copy package.json dist & cd dist & pkg package.json",
+    "sea": "mkdir dist; tsc -p tsconfig.json; cp sea-config.json dist/sea-config.json; cd dist; esbuild index.js --bundle --platform=node --outfile=singleFile.js; cross-env NODE_ENV=build node --experimental-sea-config sea-config.json; cp $(command -v node) build; npx postject build NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2",
     "buildLinux": "tsc -p tsconfig.json; cp package.json dist/package.json; cd dist; cross-env NODE_ENV=build pkg package.json; mkdir dist/src;",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
@@ -21,6 +22,7 @@
     "@types/node": "^16.11.9",
     "@types/uuid": "^8.3.4",
     "cross-env": "^7.0.3",
+    "ts-node": "^10.9.1",
     "vitepress": "^1.2.3"
   },
   "dependencies": {
@@ -32,15 +34,10 @@
     "express": "^4.17.2",
     "file-type": "^16.5.3",
     "form-data": "^4.0.0",
-    "mongodb": "^5.9.2",
-    "mongoose": "^8.0.0",
-    "multer": "^1.4.4",
-    "nedb": "^1.8.0",
-    "pkg": "^5.8.1",
+    "multer": "^1.4.5-lts.1",
     "probe-image-size": "^7.2.3",
     "reflect-metadata": "^0.2.2",
     "sqlite3": "^5.1.7",
-    "ts-node": "^10.9.1",
     "typeorm": "^0.3.20",
     "typescript": "^4.6.4",
     "uuid": "^8.3.2"
