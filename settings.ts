@@ -14,7 +14,6 @@ export interface ISetting {
     ip: string;
     downloadFolder: string;
     hostname: string;
-    legacyMongoDB: IParam;
     database: ITypeORMDatabase;
     stock_settings: IStockSettings;
     special_settings: IModelSpecialParam;
@@ -38,7 +37,6 @@ class Settings implements ISetting {
     public ip: string;
     public downloadFolder: string;
     public hostname: string ;
-    public legacyMongoDB: IParam;
     public database: ITypeORMDatabase;
     public stock_settings: IStockSettings;
     public special_settings: IModelSpecialParam;
@@ -48,8 +46,7 @@ class Settings implements ISetting {
         !fs.existsSync(process.env.baseDir || '.' + "/settings.json") && this.save()
         const { port, 
             ip, 
-            hostname, 
-            legacyMongoDB,
+            hostname,
             database,
             downloadFolder,
             stock_settings,
@@ -63,21 +60,6 @@ class Settings implements ISetting {
           type: "better-sqlite3",
           database: "database.sqlite"
         };
-        this.legacyMongoDB = legacyMongoDB ?? {
-          valueType: 'both',
-          type: "setting",
-          checkBox: {
-            checkBoxDescription: "Use Legacy mongoDB database",
-            defaultValue:false,
-            checkBoxValue: false,
-          },
-            textField: {
-              fieldPlaceholder:
-                "Database URL, use the form mongodb://username:password@host:port/moefetch",
-              value: "",
-              defaultValue:"",
-            }
-          },
         this.downloadFolder = downloadFolder ?? '../files'
         this.hostname = hostname ?? "http://127.0.0.1:2234";
         this.special_settings = special_settings ?? {};
