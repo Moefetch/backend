@@ -25,8 +25,10 @@ export interface ITypeORMDatabase {
   host?: string;
   port?: number;
   database: string;
+  nativeBinding?: string,
   username?: string;
   password?:string;
+  driver?: any;
 }
 
 /**
@@ -58,6 +60,7 @@ class Settings implements ISetting {
         this.port = port ?? 2234;
         this.database = database ?? {
           type: "better-sqlite3",
+          nativeBinding: "./better_sqlite3_driver/better_sqlite3.node",
           database: "database.sqlite"
         };
         this.downloadFolder = downloadFolder ?? '../files'

@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development ts-node index.ts",
     "buildWin": "tsc -p tsconfig.json & copy package.json dist & cd dist & pkg package.json",
-    "sea": "mkdir dist; tsc -p tsconfig.json; cp sea-config.json dist/sea-config.json; cd dist; esbuild index.js --bundle --platform=node --outfile=singleFile.js; cross-env NODE_ENV=build node --experimental-sea-config sea-config.json; cp $(command -v node) build; npx postject build NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2",
+    "sea": "mkdir dist; tsc -p tsconfig.json; cp sea-config.json dist/sea-config.json; cd dist; esbuild index.js --bundle --platform=node --outfile=singleFile.js; mkdir better_sqlite3_driver; cp ../better_sqlite3_driver/better_sqlite3.node ./better_sqlite3_driver/better_sqlite3.node; cross-env NODE_ENV=build node --experimental-sea-config sea-config.json; cp $(command -v node) buildExport; npx postject buildExport NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2",
     "buildLinux": "tsc -p tsconfig.json; cp package.json dist/package.json; cd dist; cross-env NODE_ENV=build pkg package.json; mkdir dist/src;",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
@@ -22,6 +22,7 @@
     "@types/node": "^16.11.9",
     "@types/uuid": "^8.3.4",
     "cross-env": "^7.0.3",
+    "esbuild": "0.23.0",
     "ts-node": "^10.9.1",
     "vitepress": "^1.2.3"
   },

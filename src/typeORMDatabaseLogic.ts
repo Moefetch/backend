@@ -5,6 +5,9 @@ import { albumDBClass, IDBEntry } from "../TypeORMEntities/Entry";
 import { Tag } from "../TypeORMEntities/Tags";
 import { AlbumSchemaType, IAlbumDictionaryItem, IFilterObj } from "types";
 
+import { createRequire } from 'node:module';
+const requireFile = createRequire(__filename); 
+
 
 const doc1 = {
     
@@ -64,6 +67,8 @@ interface typeORMOptions {
     password?:string;
     synchronize: boolean;
     logging: boolean;
+    driver?: any;
+    nativeBinding?: string;
 }
 interface IDBConnectionOptions extends typeORMOptions {
     entities: any[];
@@ -99,7 +104,7 @@ export class TypeORMInterface {
         })
             await DataSource.destroy()
         })
-        
+
         this.appDataSource = new DataSource(this.dbConnectionOptions as DataSourceOptions);
         
         await this.appDataSource.initialize();   
@@ -107,14 +112,15 @@ export class TypeORMInterface {
     public appDataSource: DataSource;
 
     constructor(typeORMOptions: typeORMOptions) {
-        this.dbConnectionOptions.type = typeORMOptions.type;
-        this.dbConnectionOptions.database = typeORMOptions.database;
-        typeORMOptions.host ?? (this.dbConnectionOptions.host = typeORMOptions.host)
-        typeORMOptions.port ?? (this.dbConnectionOptions.port = typeORMOptions.port)
-        typeORMOptions.username ?? (this.dbConnectionOptions.username = typeORMOptions.username)
-        typeORMOptions.password ?? (this.dbConnectionOptions.password = typeORMOptions.password)
-        this.dbConnectionOptions.synchronize = typeORMOptions.synchronize;
-        this.dbConnectionOptions.logging = typeORMOptions.logging;
+      this.dbConnectionOptions.type = typeORMOptions.type;
+      this.dbConnectionOptions.database = typeORMOptions.database;
+      if (process.env.NODE_ENV != "development" && typeORMOptions.nativeBinding && typeORMOptions.type == "better-sqlite3") this.dbConnectionOptions.nativeBinding = requireFile(typeORMOptions.nativeBinding)
+      typeORMOptions.host ?? (this.dbConnectionOptions.host = typeORMOptions.host)
+      typeORMOptions.port ?? (this.dbConnectionOptions.port = typeORMOptions.port)
+      typeORMOptions.username ?? (this.dbConnectionOptions.username = typeORMOptions.username)
+      typeORMOptions.password ?? (this.dbConnectionOptions.password = typeORMOptions.password)
+      this.dbConnectionOptions.synchronize = typeORMOptions.synchronize;
+      this.dbConnectionOptions.logging = typeORMOptions.logging;
     }
 
     /**

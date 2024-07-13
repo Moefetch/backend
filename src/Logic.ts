@@ -2,6 +2,10 @@ import fs, { ReadStream } from "fs";
 import { IProcessDictionary, ICategoryDictionary, ILogicCategory, ILogicCategorySpecialParamsDictionary, ILogicModels, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, IModelSpecialParam, IParam, IParamValidityCheck, IPicFormStockOverrides, ISettings, INewMediaItem } from "types";
 import settings from "../settings";
 import Utility from "./Utility";
+
+import { createRequire } from 'node:module';
+const requireFile = createRequire(__filename); 
+
 export class Logic {
     public settings: ISettings;
     public categoryDictionary: IProcessDictionary;
@@ -74,9 +78,9 @@ export class Logic {
         const paramsDictionary: IModelSpecialParam = {};
         
         const logicModules = fs.readdirSync('./plugins/logicModels/').filter(file => file.endsWith(process.env.EXTENSION ?? "js"))
-        
+        const initialPath = process.env.NODE_ENV == "development" ? "../plugins/logicModels/" : "./plugins/logicModels/";
         logicModules.forEach(category => {
-            const logicModule = require(`../plugins/logicModels/${category.substring(0, category.lastIndexOf('.'))}`);
+            const logicModule = requireFile(`${initialPath + category.substring(0, category.lastIndexOf('.'))}`);
             
             const moduleInstance: ILogicModels = new logicModule.default(this.settings, this.utility)
 
@@ -101,7 +105,7 @@ export class Logic {
         return categoryDictionary
     }
 
-    private loadCategoryClasses() {
+   /*  private loadCategoryClasses() {
         const categoryDictionary:ICategoryDictionary = {};
         const settingsDictionary: IModelSpecialParam = {}
         const paramsDictionary: IModelSpecialParam = {}
@@ -121,6 +125,6 @@ export class Logic {
         this.specialSettingsDictionary = settingsDictionary;
 
         return categoryDictionary
-    }
+    } */
 
 }

@@ -30,61 +30,6 @@ export default class Utility {
       if (res.statusText == "OK") return res.blob().then((blob) => blob.type).then(type => type.substring(0, type.indexOf('/')))
     }
 
-    /**
-     * DEPRICATED??
-     * @param settings 
-     * @param categoryFolder 
-     * @returns 
-     */
-  public loadModels(settings: ISettings, categoryFolder: string) {
-    let specialSettingValidityCheckArray: IParamValidityCheck[] = [];
-    let specialSettingsDictionary: IModelSpecialParam = {}
-    let specialParamsDictionary: IModelSpecialParam = {}
-      const animePicModels = fs.readdirSync(`./src/Logic/LogicCategories/${categoryFolder}/`).filter(file => file.endsWith(process.env.EXTENSION ?? "js"))
-      const processDictionary:IModelDictionary = {};
-      /* 
-      const ass:IModelDictionary = animePicModels.map(model=>{
-          const Model:ILogicModelConstructor = require(`./AnimePictureLogicModels/${model.substring(0, model.lastIndexOf('.'))}`);
-          const modelInstence:ILogicModel = new Model.default(settings)
-          return {[modelInstence.supportedHostName]: modelInstence.process}
-      }) */
-      animePicModels.forEach(model => {
-        const Model:ILogicModelConstructor = require(`./Logic/LogicCategories/${categoryFolder}/${model.substring(0, model.lastIndexOf('.'))}`);
-        const modelInstence:ILogicModel = new Model.default(settings)
-        processDictionary[modelInstence.supportedHostName] = modelInstence.process;
-        //loading special parameters
-        modelInstence.newEntryParams 
-        ? Object.assign(specialParamsDictionary, modelInstence.newEntryParams) 
-        : ({})
-        ;
-        //loading special 
-        modelInstence.specialSettings 
-        ? (Object.assign(specialSettingsDictionary, modelInstence.specialSettings)) 
-        : ({})
-        ;
-        //
-        modelInstence.specialSettingValidityCheckArray 
-        ? (specialSettingValidityCheckArray = [...specialSettingValidityCheckArray, ...modelInstence.specialSettingValidityCheckArray])
-        : ({})
-      })
-
-      let returnSpecialSettingsDictionary: IModelSpecialParam = {
-      }; 
-      
-      Object.getOwnPropertyNames(specialSettingsDictionary).length ? returnSpecialSettingsDictionary = specialSettingsDictionary : undefined;
-
-      let returnSpecialParamsDictionary: IModelSpecialParam = {
-      }
-
-      Object.getOwnPropertyNames(specialParamsDictionary).length ? returnSpecialParamsDictionary = specialParamsDictionary : undefined
-
-      return {
-        processDictionary: processDictionary, 
-        specialSettingsDictionary: returnSpecialSettingsDictionary, 
-        specialParamsDictionary: returnSpecialParamsDictionary,
-        specialSettingValidityCheckArray: specialSettingValidityCheckArray,
-      };
-  }
 
   /**
    * saveBlankThumbnail

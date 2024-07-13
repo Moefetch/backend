@@ -79,6 +79,7 @@ compareSpecialSettingsToDefault(settings, "special_settings", logic.specialSetti
 saveSettings()
 const databaseConnectionOptionsDefault = {
   type: "better-sqlite3",
+  nativeBinding: "./better_sqlite3_driver/better_sqlite3.node",
   database: "database.sqlite",
   synchronize: true,
   logging: false,
@@ -87,7 +88,10 @@ const databaseConnectionOptionsDefault = {
   subscribers: [],
 }
 
-const databasePromise = TypeORMInterface.init(databaseConnectionOptionsDefault);
+const databasePromise = TypeORMInterface.init({
+  ...settings.database,
+  synchronize:false,logging:false
+});
 
 //const database = (settings.database_url.checkBox?.checkBoxValue && settings.database_url.textField?.value) ? (new MongoDatabaseLogic(settings.database_url.textField.value, logic.supportedTypes)) : (new NeDBDatabaseLogic(logic.supportedTypes)) ;
 const router = express.Router();
@@ -343,8 +347,11 @@ export async function initialize() {
           special_settings,
           special_params
         }
+        if (settings.database.type = "better-sqlite3") {
+          settings.database.nativeBinding = "./better_sqlite3_driver/better_sqlite3.node";
+        }
         settings.database = database;
-  
+
       const errorsObject: IErrorObject = {
         hasError: false,
         responseSettings: responseSettings,
