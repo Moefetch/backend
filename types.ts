@@ -1,51 +1,29 @@
 import Utility from './src/Utility'
 
-export interface ISaucenaoResData{
-
-    ext_urls:string[];      //pixiv result index_id 5 or 51
-    title: string;
-    pixiv_id?: number;
-    member_name?:string;
-    member_id?:number;
-
-    bcy_id?:number;     //if bcy type result
-    member_link_id?: number;
-    bcy_type?:string;
-
-    danbooru_id?:number;        //result booru and sankakucomplex index_id 9 
-    gelbooru_id?:number;
-    sankaku_id?:number;
-    creator?:string | string[];
-    material?:string;
-    characters?:string;
-    source?:string;
-
-    eng_name?:string;       //other useless shit
-    jp_name?:string;
+export interface requestsQueueDictionary {
+    [id:string]: requestStatusTracker
+}
+export interface downloadProgressbarsQueueDictionary {
+    [id:string]: number
+}
+export interface queueDictionary {
+    requests: requestsQueueDictionary;
+    downloadProgressBars: downloadProgressbarsQueueDictionary;
 }
 
-export interface ISaucenaoResultObj {
-    inputType: 'url' | 'file' | 'readable stream' | 'buffer';
-    resultArray: ISaucenaoResult[]
-}
-export interface ISaucenaoResult {
-    header: {
-        similarity: string;
-        thumbnail :string;
-        index_id: number;
-        index_name: string;
-        dupes: number;
-    };
-    data: ISaucenaoResData;
-
-}
-
-export interface IFilteredSaucenaoResult  {
-    reqItem?: ISaucenaoResult;
-    animePic?: INewAnimePic;
-    imageSize?: ISizeCalculationResult;
-}
-
+export interface IRequestStatus {
+    //add something like original input/ request so that you can retry 
+    id: string;
+    currentIndex?: number;
+    numberOfEntries?: number;
+    url?: string;
+    status: "Initializing" | "Processing" | "Downloading" | "Done";
+    error?: any;
+    thumbnail?: string;
+    newSubmittion: INewMediaSubmittionItem;
+  }
+  
+  
 
 export type AlbumSchemaType = string;
 
@@ -96,6 +74,7 @@ export interface IMediaItem  {
     alternative_names?: string[];
     imageSize?: ISizeCalculationResult;
     index: number;
+    album: string;
 	tags?: string[];
 	artists?: string[];
 	isNSFW?: boolean;
@@ -203,7 +182,7 @@ export interface IReqFile {
 export interface IParam {
     category?: string; //if undefined it's a global setting for all categories
     hostname?: string; //if undefined it's a category specific setting
-    type: string; //cookie, setting, default parameter etc, use case would to to group settings later
+    type: string; //key, setting, default parameter etc, will be used to group smilar tyopes 
     valueType: "checkBox" | "textField" | "both"
     useTextArea?: boolean;
     checkBox?: {
@@ -232,8 +211,8 @@ export interface IModelSpecialParam {
 }
 export interface IProcessDictionary {
         [category: string]: { //undefined is for wildcard functions, gets access to other processing functions within same category
-            [hostname: string]: undefined | ((inputUrl: string, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewMediaItem | undefined>);
-            undefined?: (inputUrl: string | Express.Multer.File, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides, processDictionary?: IProcessDictionary[string]) => Promise<INewMediaItem | undefined>;
+            [hostname: string]: undefined | ((inputUrl: string, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IMediaSubmitFormStockOverrides, requestTracker: requestStatusTracker) => Promise<INewMediaItem | undefined>);
+            undefined?: (inputUrl: string | Express.Multer.File, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IMediaSubmitFormStockOverrides, requestTracker: requestStatusTracker, processDictionary?: IProcessDictionary[string]) => Promise<INewMediaItem | undefined>;
         }
     }
 
@@ -246,7 +225,7 @@ export interface ILogicModels {
 export interface ILogicModel {
     supportedHostName:string;
     category: string;
-    process: (inputUrl: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewMediaItem>;
+    process: (inputUrl: string, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IMediaSubmitFormStockOverrides) => Promise<INewMediaItem>;
     newEntryParams?: IModelSpecialParam;
     specialSettings?: IModelSpecialParam;
     specialSettingValidityCheckArray?: IParamValidityCheck[];
@@ -283,7 +262,7 @@ export interface ILogicCategorySpecialSettingsDictionary {
         [hostname: string]: IModelSpecialParam;
     }
 }
-export interface IPicFormStockOverrides {
+export interface IMediaSubmitFormStockOverrides {
     thumbnailFile: IParam;
     compileAllLinksIntoOneEntry: IParam;
     addId: IParam;
@@ -298,22 +277,33 @@ export interface ILogicCategory {
     specialParamsDictionary?: IModelSpecialParam;
     specialSettingsDictionary?: IModelSpecialParam;
     specialSettingValidityCheck?: IParamValidityCheck[];
-    ProcessInput: (input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IPicFormStockOverrides) => Promise<INewMediaItem | undefined>
+    ProcessInput: (input: string | File, album: string, optionalOverrideParams: ILogicCategorySpecialParamsDictionary, stockOptionalOverrides: IMediaSubmitFormStockOverrides) => Promise<INewMediaItem | undefined>
 
 }
 
-export interface INewPic {
+export interface INewMediaSubmittionItem {
     files?: string[];
     old_file?: string;
-    thumbnail_file?: string;
+    thumbnailFile?: string;
     url: string;
     optionalOverrideParams?: IModelSpecialParam;
-    stockOptionalOverrides?: IPicFormStockOverrides;
+    stockOptionalOverrides?: IMediaSubmitFormStockOverrides;
     has_results?: boolean;
     type: AlbumSchemaType;
     album: string;
     isHidden?: boolean;
   }
+  export interface INewMediaSubmittionItemInternal {
+      old_file?: string;
+      thumbnailFile?: string;
+      inputs: (Express.Multer.File | string)[]
+      optionalOverrideParams?: IModelSpecialParam;
+      stockOptionalOverrides?: IMediaSubmitFormStockOverrides;
+      type: AlbumSchemaType;
+      album: string;
+      isHidden?: boolean;
+    }
+    
   
 
   export interface IDBEntry {
@@ -610,6 +600,8 @@ export interface IPixivTag {
 }
 import type {ISetting} from "./settings";
 import { ReadStream } from "fs";
+import { requestStatusTracker as requestStatusTrackerInternalType } from 'src/webSocket';
+export type requestStatusTracker = requestStatusTrackerInternalType;
 export type ISettings = ISetting;
 
 export type OutgoingHttpHeader = number | string | string[];

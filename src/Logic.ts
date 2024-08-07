@@ -1,9 +1,10 @@
 import fs, { ReadStream } from "fs";
-import { IProcessDictionary, ICategoryDictionary, ILogicCategory, ILogicCategorySpecialParamsDictionary, ILogicModels, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, IModelSpecialParam, IParam, IParamValidityCheck, IPicFormStockOverrides, ISettings, INewMediaItem } from "types";
+import { IProcessDictionary, ICategoryDictionary, ILogicCategory, ILogicCategorySpecialParamsDictionary, ILogicModels, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, IModelSpecialParam, IParam, IParamValidityCheck, IMediaSubmitFormStockOverrides, ISettings, INewMediaItem } from "types";
 import settings from "../settings";
 import Utility from "./Utility";
 
 import { createRequire } from 'node:module';
+import { requestStatusTracker } from "./webSocket";
 const requireFile = createRequire(__filename); 
 
 export class Logic {
@@ -27,7 +28,7 @@ export class Logic {
     /**
      * ProcessInput
      */
-    public async ProcessInput(input: string | Express.Multer.File, type: string, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IPicFormStockOverrides) {
+    public async ProcessInput(input: string | Express.Multer.File, type: string, album: string, optionalOverrideParams: IModelSpecialParam, stockOptionalOverrides: IMediaSubmitFormStockOverrides, requestTracker: requestStatusTracker) {
         let categoryDictionary = this.categoryDictionary[type]
         let resultantData: INewMediaItem | undefined;
         let inputToProcess: string | Express.Multer.File | undefined = undefined;
@@ -35,20 +36,19 @@ export class Logic {
             const {hostname} = new URL(input)
             const processFunc = categoryDictionary[hostname]
             if (processFunc) {
-                resultantData = await processFunc(input, album, optionalOverrideParams, stockOptionalOverrides)
+                resultantData = await processFunc(input, album, optionalOverrideParams, stockOptionalOverrides, requestTracker)
             } else inputToProcess = input
         } else inputToProcess = input;
         
         if (inputToProcess) {
            if (categoryDictionary['undefined']) {
-               resultantData = await categoryDictionary['undefined'](inputToProcess, album, optionalOverrideParams, stockOptionalOverrides, categoryDictionary)
+               resultantData = await categoryDictionary['undefined'](inputToProcess, album, optionalOverrideParams, stockOptionalOverrides, requestTracker, categoryDictionary)
            }
         }
          
         if (resultantData && resultantData.urlsArray?.length) {
-
             if (!resultantData.media.length) {  
-                const res = await this.utility.downloadAndGetFilePaths(resultantData, album, this.settings.downloadFolder, {providedFileNames: stockOptionalOverrides.useProvidedFileName.textField?.value.split('\n')})
+                const res = await this.utility.downloadAndGetFilePaths(resultantData, album, this.settings.downloadFolder, requestTracker, {providedFileNames: [stockOptionalOverrides.useProvidedFileName.textField?.value]})
                 if ( res ) resultantData.media = res
             }
             if (resultantData.media.length == 1) {
@@ -58,6 +58,7 @@ export class Logic {
                     resultantData.thumbnailURL, 
                     this.settings.downloadFolder, 
                     `/saved_pictures_thumbnails/${album}`,
+                    requestTracker,
                 {
                     providedFileName: `thumbnailFile_${resultantData.storedResult ?? ''}_${resultantData.storedResult && resultantData.ids && resultantData.ids[resultantData.storedResult]}`,
                     providedHeaders: resultantData.requestOptions?.providedHeaders

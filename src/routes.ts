@@ -1,7 +1,7 @@
 import "reflect-metadata" //for typeORM
 import { v4 as uuidv4 } from "uuid";
 import express from "express";
-import { IReqFile, AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, INewPic, INewMediaItem, IParam, IPicFormStockOverrides, ISettings, IMediaItem } from "types";
+import { IReqFile, AlbumSchemaType, IAlbumDictionaryItem, IDBEntry, IErrorObject, IFilterObj, ILogicCategorySpecialSettingsDictionary, ILogicSpecialParamsDictionary, ILogicSpecialSettingsDictionary, IModelDictionary, INewMediaSubmittionItem, INewMediaItem, IParam, IMediaSubmitFormStockOverrides, ISettings, IMediaItem, INewMediaSubmittionItemInternal } from "types";
 import fs from "fs";
 import {Logic} from "./Logic"
 import { TypeORMInterface } from "./typeORMDatabaseLogic";
@@ -9,6 +9,7 @@ import settings from "../settings";
 import { upload } from "../middlewares/upload";
 import { isDeepStrictEqual } from "util";
 import Utility from "./Utility";
+import { requestStatusTracker } from "./webSocket";
 let logic = new Logic(settings);
 
 /* 
@@ -145,155 +146,11 @@ export async function initialize() {
   
     router.post("/add-pictures", upload.array("temp_download"), async (req, res) => {
 
-      let newEntries: IDBEntry[] = [];
-      const body: INewPic[] = JSON.parse(req.body.entries);
-  
-      const filePathDict: {[name: string]: Express.Multer.File} = {}
+      const body: INewMediaSubmittionItem[] = JSON.parse(req.body.entries);
       const reqFiles: Express.Multer.File[] | undefined = req.files as  Express.Multer.File[] | undefined;
-
-      const fileCount  = reqFiles?.length
-      if (reqFiles && fileCount) {
-        reqFiles.forEach(file => filePathDict[file.originalname] = file)
-      }
-      //individual entry FOR LOOP START
-      for (let newEntry = 0; newEntry < body.length; newEntry++) {
-        let addTagsArrayPerEntry: string[] | undefined = undefined;
-        let addidsArrayPerEntry: string[] | undefined = undefined;
-        let providedFileNamePerEntry: string[] | undefined = undefined;
-        let stockOptionalOverridesPerEntry: IPicFormStockOverrides | undefined;
-        let specifiedThumbnail: string = "";
-        const { url, album, type, files, isHidden, optionalOverrideParams, stockOptionalOverrides } = body[newEntry]; //remember to do .split('\n') and for each to get the stuff bla bla
-        if (stockOptionalOverrides) {
-          
-          if (stockOptionalOverrides.addTags.textField && stockOptionalOverrides.addTags.textField.value)
-          addTagsArrayPerEntry = stockOptionalOverrides.addTags.textField?.value.replaceAll(" ", "_").split("\n").filter( (a:string) => a != "");
-          if (stockOptionalOverrides.addId.textField && stockOptionalOverrides.addId.textField.value)
-          addidsArrayPerEntry = stockOptionalOverrides.addId.textField?.value.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
-          if (stockOptionalOverrides.useProvidedFileName.textField && stockOptionalOverrides.useProvidedFileName.textField.value)
-          providedFileNamePerEntry = stockOptionalOverrides.addId.textField?.value.replaceAll(" ", "_").split("\n").filter( (a:string) => a != "");
-          
-          stockOptionalOverridesPerEntry = {
-            thumbnailFile: JSON.parse(JSON.stringify(stockOptionalOverrides.thumbnailFile)),
-            addId: JSON.parse(JSON.stringify(stockOptionalOverrides.addId)),
-            addTags: JSON.parse(JSON.stringify(stockOptionalOverrides.addTags)),
-            compileAllLinksIntoOneEntry: JSON.parse(JSON.stringify(stockOptionalOverrides.compileAllLinksIntoOneEntry)),
-            useProvidedFileName: JSON.parse(JSON.stringify(stockOptionalOverrides.useProvidedFileName)),
-          }
-
-          if (stockOptionalOverrides.thumbnailFile.textField.value) {
-            specifiedThumbnail = await (new Utility()).downloadFromUrl(stockOptionalOverrides?.thumbnailFile?.textField?.value, this.settings.downloadFolder, 
-              `/saved_pictures_thumbnails/${album}`, {providedFileName: uuidv4()+'_thumbnail'})
-          }
-        }
-        
-        
-        let addedPicsArray: IDBEntry[] = [];
-        const multipleIntoOne: IDBEntry = {
-          album: album, id: uuidv4(), indexer:0, media: [], isHidden: false, hasNSFW:false, thumbnailFile: "",
-        }
-        let compiledEntry: INewMediaItem = {
-              data:{},
-              media:[],
-              indexer:0,
-              date_added: (new Date()).getTime(),
-              isMultiSource: stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue,
-            };
-            let arrayOfInputs: string[] | Express.Multer.File[] = [];
-            if (url) {
-              arrayOfInputs = url.replaceAll(" ", "").split("\n").filter( (a:string) => a != "");
-            } else if (files) arrayOfInputs = files.map(file => filePathDict[file])
-        if (arrayOfInputs) {
-          
-          const forLoopPromise = new Promise<IDBEntry[]>(async (resolve, reject) => {
-
-            // individiual link/file looping
-            for (let i = 0; i < arrayOfInputs.length; i++) {
-              const value = arrayOfInputs[i];
-             await new Promise<void>((resolve, reject) => setTimeout(() => {resolve()}, 100)) //just wait a bit
-             
-             if (stockOptionalOverridesPerEntry) { 
-               if (stockOptionalOverridesPerEntry.addId.textField && addidsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addId.textField.value = addidsArrayPerEntry[ (i > addidsArrayPerEntry.length) ? (addidsArrayPerEntry.length - 1) : i];
-               if (stockOptionalOverridesPerEntry.addTags.textField && addTagsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addTags.textField.value = addTagsArrayPerEntry[ (i > addTagsArrayPerEntry.length) ? (addTagsArrayPerEntry.length - 1) : i];
-               if (stockOptionalOverridesPerEntry.useProvidedFileName.textField && providedFileNamePerEntry?.length) stockOptionalOverridesPerEntry.useProvidedFileName.textField.value = providedFileNamePerEntry[ (i > providedFileNamePerEntry.length) ? (providedFileNamePerEntry.length - 1) : i];
-              }
-              
-              const entry = await logic.ProcessInput(value, type, album, optionalOverrideParams ?? {}, stockOptionalOverridesPerEntry as IPicFormStockOverrides);
-              if (entry && entry.media?.length) {
-                if (stockOptionalOverridesPerEntry?.addTags.textField?.value) {
-                  entry.tags = entry.tags ? [...entry.tags, ...(stockOptionalOverridesPerEntry.addTags.textField.value as any).replaceAll(' ', "").split(',')] : (stockOptionalOverridesPerEntry.addTags.textField.value as any).replaceAll(' ', "").split(',');
-                }
       
-                const dbEntry: IDBEntry = {
-                  album: album,
-                  hasNSFW: entry.isNSFW,
-                  id: uuidv4(),
-                  indexer: entry.indexer,
-                  thumbnailFile: entry.thumbnailFile,
-                  date_added: (new Date()).getTime(),
-                  isHidden: !!isHidden,
-                  media: entry.media.map((m: IMediaItem)=>{
-                    m.tags = entry.tags;
-                    m.isNSFW = entry.isNSFW;
-                    m.artists = entry.artists;
-                    m.date_created = entry.date_created;
-                    m.links = entry.links;
-                    m.ids = entry.ids;
-                    m.date_created = entry.date_created;
-                    return m
-                  })
-                }
-                if (stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue) {
-                  //compiledEntry.media = compiledEntry.media.concat(entry.media);
-                  multipleIntoOne.media.push(...dbEntry.media)
-                  /* compiledEntry.urlsArray = entry.urlsArray ? compiledEntry.urlsArray?.concat(entry.urlsArray) : compiledEntry.urlsArray;
-                  entry.ids ? Object.assign(compiledEntry.ids, {[i]:  entry.ids})      : {};
-                  entry.links ? Object.assign(compiledEntry.links, {[i]:  entry.links}) : {};
-                  compiledEntry.hasVideo = compiledEntry.hasVideo ?? hasVideo;
-                  if (entry.tags) {
-                    compiledEntry.tags = compiledEntry.tags ? compiledEntry.tags.concat(entry.tags) : entry.tags;
-                  }
-           
-                  if (entry.artists) {
-                    compiledEntry.artists = compiledEntry.artists ? compiledEntry.artists.concat(entry.artists) : entry.artists
-                  }
-                   */
-                } else {
-                  dbEntry.media.map((media,index)=>{
-                    media.index = index;
-                    return media
-                  });
-                  await database.addEntry(album, dbEntry, type)
-                  .then(res => addedPicsArray.push(res))
-                  .catch(console.log)
-                }
-              }
-              if (i == arrayOfInputs.length - 1) {
-                if (stockOptionalOverrides?.compileAllLinksIntoOneEntry.checkBox?.checkBoxValue) {      
-                  multipleIntoOne.media.map((media,index)=>{
-                    media.index = index;
-                    return media
-                  })
-                  await database.addEntry(album, {
-                    ...multipleIntoOne,
-                    hasNSFW: multipleIntoOne.hasNSFW ?? false,
-                    id: uuidv4(),
-                    thumbnailFile: specifiedThumbnail || multipleIntoOne.media[0].thumbnailFile,
-                    album: album,
-                    date_added: (new Date()).getTime(),
-                    isHidden: !!isHidden
-                  }, type)
-                  .then(res => addedPicsArray.push(res))
-                  .catch(console.log)
-                }
-                resolve(addedPicsArray)
-              } 
-            }
-          });
-          const resPromise = await forLoopPromise;
-          newEntries.push(...resPromise);
-        }
-        database.updateCountEntriesInAlbumByName(album)
-      }
+      
+      let newEntries: IDBEntry[] = await parseRequestInputs(body, database, reqFiles)
       res.status(200).json(newEntries)
       //database.updateCountEntriesInAlbumByName(album)
     });
@@ -399,7 +256,7 @@ export async function initialize() {
     });
   
     router.delete('/delete-entry-by-id', async (req, res) => {
-      const { album, entriesIDs } = req.body      
+      const { album, entriesIDs } = req.body;      
       await database.deleteEntries(album, entriesIDs);
       database.updateCountEntriesInAlbumByName(album)
     })
@@ -443,4 +300,167 @@ export const Router =  initialize()
   }
 
   
-  
+
+  function INewMediaItemToIDBEntry(entry: INewMediaItem, album:string, isHidden: boolean, optional?: {specifiedThumbnail?:string} ):IDBEntry {
+    const dbEntry: IDBEntry = {
+      album: album,
+      hasNSFW: entry.isNSFW,
+      id: uuidv4(),
+      indexer: entry.indexer,
+      thumbnailFile: optional?.specifiedThumbnail || entry.thumbnailFile,
+      date_added: (new Date()).getTime(),
+      isHidden: !!isHidden,
+      media: entry.media.map((m: IMediaItem)=>{
+        m.album = album;
+        m.tags = entry.tags;
+        m.isNSFW = entry.isNSFW;
+        m.artists = entry.artists;
+        m.date_created = entry.date_created;
+        m.links = entry.links;
+        m.ids = entry.ids;
+        m.date_created = entry.date_created;
+        return m
+      })
+    }
+    return dbEntry
+  }
+
+
+  function mediaItemsSetIndex(mediaItems: IMediaItem[]) {
+    return mediaItems.map((media, index)=>{
+      media.index = index;
+      return media
+    });
+    
+  }
+  async function parseRequestInputs(requestEntries: INewMediaSubmittionItem[], database: TypeORMInterface, reqFiles: Express.Multer.File[] | undefined) {
+    //create a dictionary of the uploaded files
+    const filePathDict: {[name: string]: Express.Multer.File} = {};
+    if (reqFiles && reqFiles?.length) {
+      reqFiles.forEach(file => filePathDict[file.originalname] = file);
+    }
+    let addedPicsArray: IDBEntry[] = [];
+    let addedPicsPromises: Promise<IDBEntry>[] = []
+    //looping through entries
+    for (let i = 0; i < requestEntries.length; i++) {
+      const { url, album, type, files, isHidden, optionalOverrideParams, stockOptionalOverrides, thumbnailFile, old_file } = requestEntries[i]; //remember to do .split('\n') and for each to get the stuff bla bla
+      let inputs: (Express.Multer.File | string)[] = [];
+      if (url) {
+        inputs = removeSpacesAndSplitByNewLine(url, "");
+      }
+      if (files) files.forEach(file => inputs.push(filePathDict[file]));
+      //multiple into one 
+      if (stockOptionalOverrides?.compileAllLinksIntoOneEntry?.checkBox?.checkBoxValue) {
+        const requestTracker  = new requestStatusTracker({
+              id: uuidv4(),
+              status: "Initializing",
+              currentIndex: 0,
+              numberOfEntries: inputs.length - 1 ,
+              newSubmittion: requestEntries[i]
+            })
+            addedPicsPromises.push(parseMultipleIntoOne({inputs, album, type, isHidden, optionalOverrideParams, stockOptionalOverrides, old_file, thumbnailFile}, database, requestTracker));
+      }
+      //one to one
+      else {
+        for (let i = 0; i < inputs.length; i++) {
+          const input = inputs[i];
+          const requestTracker  = new requestStatusTracker({
+            id: uuidv4(),
+            status: "Initializing",
+            currentIndex: 0,
+            numberOfEntries: 1,
+            newSubmittion: {...requestEntries[i],
+            url: typeof input == "string" ? input : input.originalname}
+          });
+          addedPicsPromises.push(parseMultipleIntoOne({inputs: [input], album, type, isHidden, optionalOverrideParams, stockOptionalOverrides, old_file, thumbnailFile}, database, requestTracker));
+        }
+      }
+    }
+    //i'd love to use .map but you still end up with array of promises and cant await the whole line;
+    for (let i = 0; i < addedPicsPromises.length; i++) {
+      const addedPic = await addedPicsPromises[i]
+      addedPicsArray.push(addedPic);
+    }
+    
+    return addedPicsArray
+  }
+  async function parseMultipleIntoOne(newEntrySubmission: INewMediaSubmittionItemInternal, database: TypeORMInterface, requestTracker: requestStatusTracker) {
+    const { inputs, thumbnailFile, album, type, isHidden, optionalOverrideParams, stockOptionalOverrides } = newEntrySubmission;
+    
+    //variables to hold data of all inputs
+    //STRING ARRAYS FOR EASIER ACCEESS
+    let addTagsArrayPerEntry: string[] | undefined = undefined;
+    let addidsArrayPerEntry: string[] | undefined = undefined;
+    let providedFileNamePerEntry: string[] | undefined = undefined;
+    
+    //to prevent recreating the same object n times, i will be only changing the properties relavant to each input, THIS WILL BECOME AN OVERRIDE FROM OVERRIDES[i]
+    let stockOptionalOverridesPerEntry: IMediaSubmitFormStockOverrides | undefined;
+    let specifiedThumbnail: string = "";
+
+
+    if (stockOptionalOverrides) {
+      addTagsArrayPerEntry = handleParsingAndSplittingOfParamtextField(stockOptionalOverrides.addTags.textField, " ")
+      addidsArrayPerEntry = handleParsingAndSplittingOfParamtextField(stockOptionalOverrides.addId.textField, "")
+      providedFileNamePerEntry = handleParsingAndSplittingOfParamtextField(stockOptionalOverrides.useProvidedFileName.textField, "_")
+      
+      stockOptionalOverridesPerEntry = JSON.parse(JSON.stringify(stockOptionalOverrides)) //copying structure so i can use it down later, will replace each value by it's 
+        
+
+      if (stockOptionalOverrides.thumbnailFile.textField.value) {
+        specifiedThumbnail = await (new Utility()).noStatusDl(stockOptionalOverrides?.thumbnailFile?.textField?.value, this.settings.downloadFolder, 
+          `/saved_pictures_thumbnails/${album}`, {providedFileName: uuidv4()+'_thumbnail'})
+      }
+    }
+    const multipleIntoOne: IDBEntry = {
+      album: album, id: uuidv4(), indexer:0, media: [], isHidden: !!isHidden, hasNSFW:false, date_added: (new Date()).getTime(), thumbnailFile: "",
+    }
+    if (inputs) {
+      for (let i = 0; i < inputs.length; i++) {
+        if (stockOptionalOverridesPerEntry) {
+          if (stockOptionalOverridesPerEntry.addId.textField && addidsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addId.textField.value = addidsArrayPerEntry[ calIndexForLimited(addidsArrayPerEntry, i)];
+          if (stockOptionalOverridesPerEntry.addTags.textField && addTagsArrayPerEntry?.length) stockOptionalOverridesPerEntry.addTags.textField.value = addTagsArrayPerEntry[ calIndexForLimited(addTagsArrayPerEntry, i)];
+          if (stockOptionalOverridesPerEntry.useProvidedFileName.textField && providedFileNamePerEntry?.length) stockOptionalOverridesPerEntry.useProvidedFileName.textField.value = providedFileNamePerEntry[ calIndexForLimited(providedFileNamePerEntry, i)];
+        }
+        requestTracker.setStatus("Processing")
+        const entry = await logic.ProcessInput(inputs[i], type, album, optionalOverrideParams ?? {}, stockOptionalOverridesPerEntry as IMediaSubmitFormStockOverrides, requestTracker);
+        if (entry && entry.media?.length) {
+          
+          entry.tags = handleJoinOverrideValues(entry.tags, stockOptionalOverridesPerEntry?.addTags?.textField)
+          
+          if (stockOptionalOverridesPerEntry?.addId?.textField?.value) {
+            const customIDOBJ = {customId: stockOptionalOverridesPerEntry.addId.textField.value}
+            entry.ids = entry.ids ? Object.assign(entry.ids, customIDOBJ) : customIDOBJ
+          }
+
+          const dbEntry: IDBEntry = INewMediaItemToIDBEntry(entry, album, isHidden, {specifiedThumbnail: specifiedThumbnail})
+          multipleIntoOne.media.push(...dbEntry.media)
+        }
+      }
+      multipleIntoOne.thumbnailFile = specifiedThumbnail || multipleIntoOne.media[0]?.thumbnailFile,
+      multipleIntoOne.hasNSFW = !!multipleIntoOne.media.filter(media=>media.isNSFW).length,
+      multipleIntoOne.media = mediaItemsSetIndex(multipleIntoOne.media);
+      
+      return await database.addEntry(album, multipleIntoOne, type).catch(console.log)
+    }
+  }
+
+
+
+  function handleParsingAndSplittingOfParamtextField(textField: IParam["textField"], replaceSpaceWith: string): string[]|undefined {
+    if (textField && textField.value) {
+      return textField.value.replaceAll(" ", replaceSpaceWith).split("\n").filter( (a:string) => a != "")
+    }
+  }
+  function removeSpacesAndSplitByNewLine(value: string, replaceSpaceWith: string) {
+    return value.replaceAll(" ", replaceSpaceWith).split("\n").filter( (a:string) => a != "")
+  }
+
+  function calIndexForLimited(val: string[], i: number) {
+    return (i > val.length) ? (val.length - 1) : i
+   }
+   function handleJoinOverrideValues(entryProperty: string[] | undefined, textField: IParam["textField"] | undefined) {
+    if (textField?.value) {
+      return entryProperty?.length ? [...entryProperty, ...textField.value.split(',').map(tag=>tag.trim().replaceAll(' ', "_"))] : textField.value.split(',').map(tag=>tag.trim().replaceAll(' ', "_"));
+    }
+    else return entryProperty
+  }

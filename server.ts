@@ -5,9 +5,9 @@ import settings from "./settings";
 import chalk from "chalk";
 import Utility from './src/Utility'
 import {Router} from "./src/routes";
+import {wssW} from "./src/webSocket";
 
 const utility = new Utility();
-
 utility.checkDirectoryAndCreate(`${settings.downloadFolder}/temp_downloads/`)
 
 if (!utility.checkDirectoryAndCreate(`${settings.downloadFolder}/album_thumbnail_files/`)) {
@@ -18,12 +18,13 @@ if (!utility.checkDirectoryAndCreate(`${settings.downloadFolder}/album_thumbnail
     `/album_thumbnail_files/`,{providedFileName: 'image'}
   ); */
 }
+
 class backendServer {
   public express: Express;
   public server: http.Server;
   private backendURL = process.env.DEV
     ? "http://127.0.0.1:2234"
-    : "http://localhost:2234"; //if you wanna go with a hostname
+    : "http://localhost:2234"; //if you wanna go with a hostname replace localhost with said hostname
 
   constructor() {
     this.express = express();
@@ -31,6 +32,16 @@ class backendServer {
     console.log('Backend URL: ', this.backendURL);
 
     this.registerExpressRoutes();
+
+
+    this.server.on('upgrade', function (request, socket, head) {
+      socket.on('error', (err)=>console.log(err));
+      
+      wssW.wss.handleUpgrade(request, socket, head, function (ws) {
+        wssW.wss.emit('connection', ws, request);
+      });
+
+    });
 
     this.server.listen(settings.port, () =>
       console.log(

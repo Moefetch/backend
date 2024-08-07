@@ -1,7 +1,7 @@
 import fs from "fs";
 import probeImageSize from "probe-image-size";
 
-import { IImageProps, INewMediaItem, OutgoingHttpHeaders, ISettings, ILogicCategorySpecialSettingsDictionary, ILogicModel,  ILogicCategorySpecialParamsDictionary, IModelDictionary, ILogicCategory, ILogicModelConstructor, IParamValidityCheck, IModelSpecialParam } from "../types";
+import { IImageProps, INewMediaItem, OutgoingHttpHeaders, ISettings, ILogicCategorySpecialSettingsDictionary, ILogicModel,  ILogicCategorySpecialParamsDictionary, IModelDictionary, ILogicCategory, ILogicModelConstructor, IParamValidityCheck, IModelSpecialParam, requestStatusTracker } from "../types";
 import needle from "needle";
 
 export default class Utility {
@@ -255,10 +255,11 @@ public deleteFile(path: string) {
     resultantData: INewMediaItem,
     album: string,
     downloadFolder: string,
+    requestTracker: requestStatusTracker,
     optional?: {
       providedFileNames?: string[];
       providedFileExtensions?: string[];
-      providedThumbnailFileExtensions?: string[]
+      providedThumbnailFileExtensions?: string[];
     }
   ) {    
     let result: INewMediaItem["media"] = [];
@@ -279,6 +280,7 @@ public deleteFile(path: string) {
             element.imageUrl,
             downloadFolder,
             `/saved_pictures/${album}`,
+            requestTracker,
             {
               providedFileName: (optional?.providedFileNames && optional?.providedFileNames[index])
                 ? optional?.providedFileNames[index]
@@ -290,7 +292,7 @@ public deleteFile(path: string) {
                     ""
                   } - ${index} - ${Date.now()}`,
               providedHeaders: providedRequestObj,
-              providedFileExtension: optional?.providedFileExtensions ? optional?.providedFileExtensions[index] : undefined
+              providedFileExtension: optional?.providedFileExtensions ? optional?.providedFileExtensions[index] : undefined,
             }
           );
         } catch (error) {
@@ -308,6 +310,7 @@ public deleteFile(path: string) {
               element.thumbnailUrl,
               downloadFolder,
               `/saved_pictures_thumbnails/${album}`,
+              requestTracker,
               {
                 providedFileName: thumbnailFileNameFromProvided,
                 providedFileExtension: thumbnailFileExtensionFromProvided,
@@ -362,6 +365,7 @@ public deleteFile(path: string) {
     url: string,
     downloadFolder: string,
     downloadPath: string,
+    requestTracker?: requestStatusTracker,
     options?: {
       referrer?: string;
       providedFileName?: string;
@@ -378,12 +382,69 @@ public deleteFile(path: string) {
         : url.substring(url.lastIndexOf("/") + 1 , url.lastIndexOf("."));
 
     returnPath = `${downloadPath + "/" + fileName + '.' + fileExtension}`;
-
+    requestTracker.setStatus("Downloading");
     await this.request(url, "GET", {
       providedHeaders: options?.providedHeaders,
       referrer: options?.referrer,
-    })
-      .then(async (res) => await res.blob())
+    }).then(async (response) => {
+        let res: Response | undefined = undefined;
+        if (requestTracker) res = await this.trackDownloadProgress(response, requestTracker)
+        return res ? (await res.blob()) : (await response.blob());
+      })
+      .then(async (blob) => await blob.arrayBuffer())
+      .then((buffer) => Buffer.from(buffer))
+      .then((buffer) => {
+        this.checkDirectoryAndCreate(downloadFolder + downloadPath);
+        fs.promises
+          .writeFile(
+            downloadFolder + downloadPath + "/" + fileName + "." + fileExtension,
+            buffer
+          )
+          .catch((error) => {
+            console.log(error);
+            returnPath = undefined;
+          });
+      });
+      requestTracker.setStatus("Done");
+    return returnPath;
+  }
+
+
+  /**
+   *
+   * @param url url to the file to download
+   * @param downloadFolder path to the default download folder
+   * @param downloadPath path inside the default download folder
+   * @param options optional object to pass in either a referrer for the requests and/or a filename, not that the filename doesnt need to contain file extension
+   * you can also pass in a header object in options.providedHeaders
+   * @returns path to the downloaded file
+   */
+  public async noStatusDl(
+    url: string,
+    downloadFolder: string,
+    downloadPath: string,
+    options?: {
+      referrer?: string;
+      providedFileName?: string;
+      providedFileExtension?: string;
+      providedHeaders?: RequestInit;
+    }
+  ) {
+    let returnPath: string | undefined = "";
+
+    const fileExtension = options?.providedFileExtension ?? url.substring(url.lastIndexOf(".") + 1);
+    const fileName =
+      (!!options?.providedFileName)
+        ? options?.providedFileName
+        : url.substring(url.lastIndexOf("/") + 1 , url.lastIndexOf("."));
+
+    returnPath = `${downloadPath + "/" + fileName + '.' + fileExtension}`;
+    await this.request(url, "GET", {
+      providedHeaders: options?.providedHeaders,
+      referrer: options?.referrer,
+    }).then(async (response) => {
+        return response.blob();
+      })
       .then(async (blob) => await blob.arrayBuffer())
       .then((buffer) => Buffer.from(buffer))
       .then((buffer) => {
@@ -399,6 +460,32 @@ public deleteFile(path: string) {
           });
       });
     return returnPath;
+  }
+
+  /**
+   * trackDownloadProgress
+   */
+  private async trackDownloadProgress(response: Response, requestTracker: requestStatusTracker):Promise<Response> {
+    const contentLength = response.headers.get('content-length');
+    const total = parseInt(contentLength, 10);
+    let loaded = 0;
+    let previousDownloadPrecentage = 0;
+    const res = new Response(new ReadableStream({async start(controller) {
+      const reader = response.body.getReader();
+      for (;;){
+        const {done, value} = await reader.read();
+        if (done) break;
+        loaded += value.byteLength;
+        const currentDownloadPrecentage = Math.round(loaded/total*100);
+        if (currentDownloadPrecentage > previousDownloadPrecentage) {
+          previousDownloadPrecentage = currentDownloadPrecentage;
+          requestTracker.emitDownloadStatus(currentDownloadPrecentage);
+        }
+        controller.enqueue(value);
+      }
+      controller.close();
+    },}))
+    return res
   }
   /**
    * checks if a directory exists and returns true if it does else false;

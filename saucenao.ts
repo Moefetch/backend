@@ -1,10 +1,60 @@
 import fs from "fs";
 import stream from "stream";
 
-import { ISaucenaoResult, ISaucenaoResultObj } from "types";
+import { ISizeCalculationResult,INewAnimePic  } from "types";
 
 import FormData from "form-data";
 import fileType from "file-type";
+
+
+export interface ISaucenaoResultObj {
+  inputType: 'url' | 'file' | 'readable stream' | 'buffer';
+  resultArray: ISaucenaoResult[]
+}
+
+
+export interface IFilteredSaucenaoResult  {
+  reqItem?: ISaucenaoResult;
+  animePic?: INewAnimePic;
+  imageSize?: ISizeCalculationResult;
+}
+
+
+export interface ISaucenaoResult {
+  header: {
+      similarity: string;
+      thumbnail :string;
+      index_id: number;
+      index_name: string;
+      dupes: number;
+  };
+  data: ISaucenaoResData;
+
+}
+
+export interface ISaucenaoResData{
+
+  ext_urls:string[];      //pixiv result index_id 5 or 51
+  title: string;
+  pixiv_id?: number;
+  member_name?:string;
+  member_id?:number;
+
+  bcy_id?:number;     //if bcy type result
+  member_link_id?: number;
+  bcy_type?:string;
+
+  danbooru_id?:number;        //result booru and sankakucomplex index_id 9 
+  gelbooru_id?:number;
+  sankaku_id?:number;
+  creator?:string | string[];
+  material?:string;
+  characters?:string;
+  source?:string;
+
+  eng_name?:string;       //other useless shit
+  jp_name?:string;
+}
 
 /**
  * creates a sauceNao instance

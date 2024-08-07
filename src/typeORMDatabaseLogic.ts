@@ -1,10 +1,10 @@
 import "reflect-metadata"
 import { ArrayContains, DataSource, DataSourceOptions, Equal, Like } from "typeorm"
-import { Album } from "../TypeORMEntities/Albums";
-import { albumDBClass, IDBEntry } from "../TypeORMEntities/Entry";
-import { Tag } from "../TypeORMEntities/Tags";
-import { AlbumSchemaType, IAlbumDictionaryItem, IFilterObj } from "types";
-
+import { Album } from "../TypeORM/Entities/Albums";
+import { albumDBClass, IDBEntry } from "../TypeORM/Entities/Entry";
+import { Tag } from "../TypeORM/Entities/Tags";
+import { AlbumSchemaType, IAlbumDictionaryItem, IFilterObj, IMediaItem } from "types";
+import { InitializeEmptyDB } from "../TypeORM/Migrations/InitializeEmptyDB";
 import { createRequire } from 'node:module';
 const requireFile = createRequire(__filename); 
 
@@ -83,7 +83,7 @@ export class TypeORMInterface {
         synchronize: true, //change this to false for production?
         logging: false,
         entities: [Album, Tag],
-        migrations: [],
+        migrations: [InitializeEmptyDB],
         subscribers: [],
     }
     /**
@@ -154,6 +154,7 @@ export class TypeORMInterface {
     //generating entity for entries in album
     const {Entry, Media} = albumDBClass(newAlbum.name);
     this.entities[newAlbum.name] = Entry;
+    await this.appDataSource.query(`CREATE TABLE "${newAlbum.name}" ("id" varchar PRIMARY KEY NOT NULL, "indexer" integer NOT NULL, "name" varchar, "hasVideo" boolean, "thumbnailFile" varchar NOT NULL, "alternative_names" text, "album" varchar NOT NULL, "artists" text, "storedResult" varchar, "links" text, "ids" text, "isHidden" boolean NOT NULL, "hasNSFW" boolean NOT NULL, "hasResults" boolean, "tags" text, "date_added" integer NOT NULL, "date_created" integer)`);
     this.dbConnectionOptions.entities.push(this.entities[newAlbum.name]);
     this.dbConnectionOptions.entities.push(Media);
 
@@ -168,10 +169,10 @@ export class TypeORMInterface {
    * deleteAlbum
    */
   public async deleteAlbumByName(albumName: string) {
+    this.appDataSource.createQueryBuilder().delete().from("Media", "Media").select("*").where(`album='${albumName}'`).execute();
+    
+    await this.appDataSource.createQueryRunner().dropTable(albumName);
     this.appDataSource.manager.delete(Album, {name:albumName}).catch(err=>console.log("Error deleting Album: ", albumName, "\nwith error message: ", err));
-    const {Entry, Media} = albumDBClass(albumName);
-    this.appDataSource.getRepository(Entry).clear();
-    this.appDataSource.getRepository(Media).clear();
     this.entities[albumName] = undefined;
   }
 
