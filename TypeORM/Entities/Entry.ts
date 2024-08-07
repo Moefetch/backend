@@ -12,13 +12,14 @@ export interface ISizeCalculationResult extends ISize {
 }
 
 
-export interface IMediaItem  {
+export interface IMediaItem {
     file: string;
     thumbnailFile?: string;
     isVideo: boolean;
     alternative_names?: string[];
     imageSize?: ISizeCalculationResult;
     index: number;
+    album: string;
 	tags?: string[];
 	artists?: string[];
 	isNSFW?: boolean;
@@ -145,6 +146,9 @@ export class IMedia implements IMediaItem {
     @Column()
     file: string;
     
+    @Column()
+    album: string;
+    
     @Column({nullable: true})
     thumbnailFile?: string;
 
@@ -260,6 +264,9 @@ export function albumDBClass(albumName: string) {
     
         @Column()
         file: string;
+    
+        @Column()
+        album: string;
         
         @Column({nullable: true})
         thumbnailFile?: string;
