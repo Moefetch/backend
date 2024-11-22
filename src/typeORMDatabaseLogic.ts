@@ -1,5 +1,5 @@
 import "reflect-metadata"
-import { ArrayContains, DataSource, DataSourceOptions, Equal, Like } from "typeorm"
+import { ArrayContains, DataSource, DataSourceOptions, Equal, Like, And } from "typeorm"
 import { Album } from "../TypeORM/Entities/Albums";
 import { albumDBClass, IDBEntry } from "../TypeORM/Entities/Entry";
 import { Tag } from "../TypeORM/Entities/Tags";
@@ -66,7 +66,7 @@ interface typeORMOptions {
     username?: string;
     password?:string;
     synchronize: boolean;
-    logging: boolean;
+    logging: boolean | string | string[];
     driver?: any;
     nativeBinding?: string;
 }
@@ -81,7 +81,7 @@ export class TypeORMInterface {
         type: "",
         database: "",
         synchronize: true, //change this to false for production?
-        logging: false,
+        logging: "all",
         entities: [Album, Tag],
         migrations: [InitializeEmptyDB],
         subscribers: [],
@@ -211,16 +211,32 @@ export class TypeORMInterface {
   /**
   * get Entries and filter
   */
-  public async getEntriesInAlbumByNameAndFilter(albumName: string, initialFilterObject: IFilterObj, sortObj?: any) {
+  public async getEntriesInAlbumByNameAndFilter(albumName: string, initialFilterObject: IFilterObj, sortBy?: any) {
     const filterObject: any = {
     }
-    initialFilterObject.nameIncludes ? filterObject.name = Like(`%${initialFilterObject.nameIncludes}%`) : undefined;
-    initialFilterObject.tags ? filterObject.tags = ArrayContains(initialFilterObject.tags) : {};
+    filterObject.media = {};
+    if (initialFilterObject.nameIncludes) {
+      filterObject.media.file = Like(`%${initialFilterObject.nameIncludes}%`);
+    }
+    if (initialFilterObject.tags?.length) {
+      let tagsQuery:any = [];
+      initialFilterObject.tags.forEach(tag=> tagsQuery.push(Like(`%${tag}%`)));
+      filterObject.media.tags = And(...tagsQuery);
+    };
+    
     initialFilterObject.artists ? filterObject.artists = ArrayContains(initialFilterObject.artists) : undefined;
     (initialFilterObject.showHidden) ? undefined : filterObject.isHidden = Equal(false);
-    (initialFilterObject.showNSFW ) ? undefined : filterObject.isNSFW = Equal(false);
-    sortObj ? filterObject.order = sortObj : undefined;
-    return (await this.appDataSource.manager.find(this.entities[albumName], filterObject))
+    (initialFilterObject.showNSFW ) ? undefined : filterObject.hasNSFW = Equal(false);
+    let sortObj: any = undefined;
+    if (sortBy) {
+      const sortDictionary = {"Newest First": {date_added: "DESC"},
+       "Oldest First": {date_added: "ASC"}};
+       sortObj = sortDictionary[sortBy]
+    }
+    
+    return (await this.appDataSource.getRepository(this.entities[albumName]).find({relations: {
+      media: true,
+    }, where: filterObject, order: sortObj}))
     
   }
     
@@ -253,9 +269,8 @@ export class TypeORMInterface {
   * handleHidingPicturesInAlbum
   */
   public handleHidingPicturesInAlbum(albumName: string, entriesIDs: string[], hide: boolean) {
-    const newModelEntry = this.entities[albumName];
-    const queryIDs = entriesIDs.map(id => ({"id":id}));
-    return this.appDataSource.manager.update(newModelEntry, {where:queryIDs}, {isHidden: hide})
+    let ids = entriesIDs.join("', '");
+    this.appDataSource.createQueryRunner().query(`UPDATE "${albumName}" SET isHidden = ${!!hide} WHERE "id" IN ('${ids}');`);
     }
   
 
@@ -263,13 +278,8 @@ export class TypeORMInterface {
   * handleHidingPicturesInAlbum
   */
   public handleHidingPictureInAlbum(albumName: string, entryID: string, hide: boolean) {
-  
-    const newModelEntry = this.entities[albumName];
-    return this.appDataSource.manager.update(newModelEntry, {id:entryID}, {isHidden: hide})
+    this.appDataSource.createQueryRunner().query(`UPDATE "${albumName}" SET isHidden = ${!!hide} WHERE "id" = '${entryID}';`);
     }
-  
-
-
 
   /**
   * deleteEntry
@@ -285,7 +295,8 @@ export class TypeORMInterface {
   * addPicture
   */
   public addEntry(albumName: string, entryOBJ: IDBEntry, type: AlbumSchemaType) {
-    const convertedEntry = this.convertINewPicToIEntry(entryOBJ)
+    const convertedEntry = this.convertINewPicToIEntry(entryOBJ);
+    
     const newModelEntry = this.entities[albumName];
     convertedEntry.media.forEach(m=>{
       if (m.tags) {        
@@ -389,7 +400,7 @@ export class TypeORMInterface {
   */
  public async getTagsForAutocomplete(search: string, type?: AlbumSchemaType) {
   const searchObj:any = {tag: Like(`%${search}%`)};
-  type ?? (searchObj.category = Equal(type))
+  type ?? (searchObj.category = Equal(type));
   const ress = await this.appDataSource.manager.find(Tag, {where:searchObj})
   
   return ress

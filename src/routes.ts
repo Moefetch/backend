@@ -159,8 +159,6 @@ export async function initialize() {
       const {album, options} = req.body; 
       const { sortBy, tags, nameIncludes, showNSFW, showHidden } = options;
       
-      let sortOBJ: any = {}
-      sortOBJ[sortBy] = 1;
   
       const filterOBJ: IFilterObj = { 
         showNSFW: showNSFW, 
@@ -170,7 +168,7 @@ export async function initialize() {
       }
   
   
-      const picsInAlbum = await database.getEntriesInAlbumByUUIDAndFilter(album, filterOBJ , sortOBJ)
+      const picsInAlbum = await database.getEntriesInAlbumByUUIDAndFilter(album, filterOBJ , sortBy)
       if (picsInAlbum && picsInAlbum.length) {
         res.status(200).json(picsInAlbum)
       } else {
