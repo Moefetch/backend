@@ -107,29 +107,52 @@ router.use((req, res, next) => {
   next()
 })
  */
+
+
+
+function reqBodyToAlbumDictionaryItem(name :string, type :string,isHidden: boolean, uuid: string, estimatedPicCount:number, albumCoverImage: string, file?: Express.Multer.File) {
+  let album_thumbnail_files;
+  const album: IAlbumDictionaryItem = {
+    name: name as string,
+    id: uuid,
+    albumCoverImage: albumCoverImage,
+    type: type as AlbumSchemaType,
+    uuid: uuid,
+    estimatedPicCount: estimatedPicCount,
+    isHidden: !!isHidden,
+  };
+  if (file) {
+    album_thumbnail_files = file as Express.Multer.File;
+    album.albumCoverImage = album_thumbnail_files.filename;
+  }
+  return album;
+      
+}
+
 export async function initialize() {
   const database = await databasePromise;
   database.updateCountEntriesInAllAlbums()
+
+  router.post(
+    "/edit-album",
+    upload.single("album_thumbnail_file"),
+    async (req, res) => {
+      const { uuid, type, name, estimatedPicCount, album_thumbnail_file,  isHidden } = req.body;
+      const album: IAlbumDictionaryItem = reqBodyToAlbumDictionaryItem(name, type, isHidden, uuid, parseInt(estimatedPicCount), album_thumbnail_file, req.file);
+
+      database.updateAlbum(album);
+
+      res.status(200).json(album);
+    }
+  );
 
   router.post(
       "/create-album",
       upload.single("album_thumbnail_file"),
       async (req, res) => {
         const { type, name, isHidden } = req.body;
-        let album_thumbnail_files;
-        const newAlbum: IAlbumDictionaryItem = {
-          name: name as string,
-          id: uuidv4(),
-          albumCoverImage: "album_thumbnail_files/image.svg",
-          type: type as AlbumSchemaType,
-          uuid: uuidv4(),
-          estimatedPicCount: 0,
-          isHidden: !!isHidden,
-        };
-        if (req.file) {
-          album_thumbnail_files = req.file as Express.Multer.File;
-          newAlbum.albumCoverImage = album_thumbnail_files.filename;
-        }
+        const newAlbum: IAlbumDictionaryItem = reqBodyToAlbumDictionaryItem(name, type, isHidden, uuidv4(), 0, "album_thumbnail_files/image.svg", req.file);
+
   
         database.createAlbum(newAlbum);
   

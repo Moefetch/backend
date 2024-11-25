@@ -1,7 +1,7 @@
 import "reflect-metadata"
 import { ArrayContains, DataSource, DataSourceOptions, Equal, Like, And } from "typeorm"
 import { Album } from "../TypeORM/Entities/Albums";
-import { albumDBClass, IDBEntry } from "../TypeORM/Entities/Entry";
+import { albumDBClass, IDBEntry, IMedia } from "../TypeORM/Entities/Entry";
 import { Tag } from "../TypeORM/Entities/Tags";
 import { AlbumSchemaType, IAlbumDictionaryItem, IFilterObj, IMediaItem } from "types";
 import { InitializeEmptyDB } from "../TypeORM/Migrations/InitializeEmptyDB";
@@ -99,6 +99,7 @@ export class TypeORMInterface {
         Albums.forEach(a=>{
             const {Entry, Media} = albumDBClass(a.name);
             this.entities[a.name] = Entry;
+            this.entitiesMedia[a.name] = Media;
             this.dbConnectionOptions.entities.push(Entry);
             this.dbConnectionOptions.entities.push(Media);
         })
@@ -133,7 +134,55 @@ export class TypeORMInterface {
     }
 
     public entities: {[albumName:string]:any} = {};
+    public entitiesMedia: {[albumName:string]:any} = {};
     
+
+    /**
+     * modify Album data (affects the album dictionary as well as the album Table itself and the Media entries in said album)
+     */
+    public async updateAlbum(album: IAlbumDictionaryItem) {
+      //making instance
+      const albumInstance = new Album();
+      albumInstance.id = album.id;
+      albumInstance.albumCoverImage = album.albumCoverImage as string;
+      albumInstance.name = album.name;
+      albumInstance.uuid = album.uuid;
+      albumInstance.type = album.type;
+      albumInstance.estimatedPicCount = album.estimatedPicCount;
+      albumInstance.isHidden = album.isHidden;  
+      
+      const oldTableName = (await this.appDataSource.manager.findOne(Album, {where:{uuid:Equal(album.uuid)}})).name;
+      if (oldTableName) {
+        
+        if (oldTableName != album.name) {
+          const modelEntry = this.entities[oldTableName];
+          await this.appDataSource.manager.update(modelEntry, {}, {album: album.name});
+          await this.appDataSource.manager.update(this.entitiesMedia[oldTableName], {album: oldTableName}, {album: album.name});
+          await this.appDataSource.createQueryRunner("master").renameTable(oldTableName, album.name).catch(console.log);
+
+          this.entities[oldTableName] = undefined;
+          this.entitiesMedia[oldTableName] = undefined;
+    
+          await this.appDataSource.manager.update(Album, {"uuid": album.uuid}, albumInstance);
+
+          
+          const {Entry, Media} = albumDBClass(album.name);
+          this.entities[album.name] = Entry;
+          this.entitiesMedia[album.name] = Media;
+
+          this.dbConnectionOptions.entities = [Album, Tag];
+          for (const albumName in this.entities) {
+            if (Object.prototype.hasOwnProperty.call(this.entities, albumName)) {
+              this.dbConnectionOptions.entities.push(this.entities[albumName]);
+              this.dbConnectionOptions.entities.push(this.entitiesMedia[albumName]);
+            }
+          }
+        }
+        else await this.appDataSource.manager.update(Album, {"uuid": album.uuid}, albumInstance);
+
+        await this.reloadAppDataSource();
+      }
+    }
 
     /**
    * createAlbum
@@ -154,16 +203,22 @@ export class TypeORMInterface {
     //generating entity for entries in album
     const {Entry, Media} = albumDBClass(newAlbum.name);
     this.entities[newAlbum.name] = Entry;
+    this.entitiesMedia[newAlbum.name] = Media;
+
     await this.appDataSource.query(`CREATE TABLE "${newAlbum.name}" ("id" varchar PRIMARY KEY NOT NULL, "indexer" integer NOT NULL, "name" varchar, "hasVideo" boolean, "thumbnailFile" varchar NOT NULL, "alternative_names" text, "album" varchar NOT NULL, "artists" text, "storedResult" varchar, "links" text, "ids" text, "isHidden" boolean NOT NULL, "hasNSFW" boolean NOT NULL, "hasResults" boolean, "tags" text, "date_added" integer NOT NULL, "date_created" integer)`);
     this.dbConnectionOptions.entities.push(this.entities[newAlbum.name]);
     this.dbConnectionOptions.entities.push(Media);
 
     //reloading
-    await this.appDataSource.destroy()
-    this.appDataSource = new DataSource(this.dbConnectionOptions as DataSourceOptions);
-    await this.appDataSource.initialize();
+    await this.reloadAppDataSource();
   }
-    
+
+
+    private async reloadAppDataSource() {
+      await this.appDataSource.destroy()
+      this.appDataSource = new DataSource(this.dbConnectionOptions as DataSourceOptions);
+      await this.appDataSource.initialize();
+    }
 
   /**
    * deleteAlbum
@@ -174,6 +229,8 @@ export class TypeORMInterface {
     await this.appDataSource.createQueryRunner().dropTable(albumName);
     this.appDataSource.manager.delete(Album, {name:albumName}).catch(err=>console.log("Error deleting Album: ", albumName, "\nwith error message: ", err));
     this.entities[albumName] = undefined;
+    this.entitiesMedia[albumName] = undefined;
+    
   }
 
 
