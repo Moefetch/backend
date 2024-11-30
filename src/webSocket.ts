@@ -19,9 +19,7 @@ export class requestsWebSocketsWrapper {
   /**
    * upsertRequest
    */
-  public upsertRequest(id: string, requestStatus: IRequestStatus) {
-    console.log(requestStatus);
-    
+  public upsertRequest(id: string, requestStatus: IRequestStatus) {    
     const requestJson = {
       typeOfAction: "update request queue",
       id,

@@ -1,5 +1,5 @@
 import settings from "../settings";
-//stolen from TAKU.MOE by Geoxor & N1ko
+//Credit to Geoxor & N1ko
 
 import multer from "multer";
 const storage = multer.diskStorage({

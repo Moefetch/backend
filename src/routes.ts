@@ -11,7 +11,7 @@ import { isDeepStrictEqual } from "util";
 import Utility from "./Utility";
 import { requestStatusTracker } from "./webSocket";
 let logic = new Logic(settings);
-
+const routesUtility = new Utility();
 /* 
 function compareSpecialSettingsToDefault(initialSettings: typeof settings, divisionType: "special_settings" | "special_params", 
 defaultSpecialSettingsOrParams: {[key: string]: any}
@@ -91,7 +91,7 @@ const databaseConnectionOptionsDefault = {
 
 const databasePromise = TypeORMInterface.init({
   ...settings.database,
-  synchronize:false,logging:false
+  synchronize:false, logging:false
 });
 
 //const database = (settings.database_url.checkBox?.checkBoxValue && settings.database_url.textField?.value) ? (new MongoDatabaseLogic(settings.database_url.textField.value, logic.supportedTypes)) : (new NeDBDatabaseLogic(logic.supportedTypes)) ;
@@ -132,6 +132,46 @@ function reqBodyToAlbumDictionaryItem(name :string, type :string,isHidden: boole
 export async function initialize() {
   const database = await databasePromise;
   database.updateCountEntriesInAllAlbums()
+  
+  router.post(
+    "/change-entry-thumbnail",
+    upload.single("temp_download"),
+    async (req, res) => {
+      const entryUUID: string = req.body.entryUUID;
+      const albumName: string = req.body.albumName;
+      let newPath = "";
+      if (req.file) {
+        const newThumbnailfile = req.file;
+        newPath = `${settings.downloadFolder}/saved_pictures_thumbnails/${albumName}/thumbnail-${+Date.now() + "-"  + (newThumbnailfile.path.substring(newThumbnailfile.path.lastIndexOf("/") + 1))}`;
+        routesUtility.moveFile(newThumbnailfile.path, newPath);
+        newPath = newPath.substring(newPath.indexOf('/saved_pictures_thumbnails/'));
+      }
+      const oldEntry = (await database.getEntriesInAlbumByNameAndFilter(albumName, {id:entryUUID}))[0] as IDBEntry
+      if (oldEntry && oldEntry.id == entryUUID) {
+        oldEntry.thumbnailFile = newPath;
+      }
+      
+      database.updateEntry(albumName, oldEntry);
+      res.status(200).json(oldEntry);
+    }
+  );
+
+  router.post(
+    "/edit-media-item",
+    upload.single("temp_download"),
+    async (req, res) => {
+      const mediaItem: IMediaItem = JSON.parse(req.body.item);
+      let newPath = "";
+      if (req.file) {
+        const newThumbnailfile = req.file;
+        newPath = `${settings.downloadFolder}/saved_pictures_thumbnails/${mediaItem.album}/thumbnail-${+Date.now() + "-"  + (newThumbnailfile.path.substring(newThumbnailfile.path.lastIndexOf("/") + 1))}`;
+        routesUtility.moveFile(newThumbnailfile.path, newPath);
+        newPath = newPath.substring(newPath.indexOf('/saved_pictures_thumbnails/'));
+      }
+      database.editMediaItem(mediaItem, newPath);
+      res.status(200).json(mediaItem);
+    }
+  );
 
   router.post(
     "/edit-album",
@@ -167,7 +207,7 @@ export async function initialize() {
       return res.status(200).json({ sex: "sex" });
     });
   
-    router.post("/add-pictures", upload.array("temp_download"), async (req, res) => {
+    router.post("/add-new-entries", upload.array("temp_download"), async (req, res) => {
 
       const body: INewMediaSubmittionItem[] = JSON.parse(req.body.entries);
       const reqFiles: Express.Multer.File[] | undefined = req.files as  Express.Multer.File[] | undefined;
@@ -282,7 +322,7 @@ export async function initialize() {
       database.updateCountEntriesInAlbumByName(album)
     })
   
-    router.post("/handle-hide-pictures", (req, res) => {
+    router.post("/handle-hide-entries", (req, res) => {
       const { album, entriesIDs, hide } = req.body;
       database.handleHidingPicturesInAlbum(album, entriesIDs, hide)
     })
@@ -348,8 +388,9 @@ export const Router =  initialize()
 
 
   function mediaItemsSetIndex(mediaItems: IMediaItem[]) {
-    return mediaItems.map((media, index)=>{
+    return mediaItems.map((media, index)=>{      
       media.index = index;
+      if (!media.id) media.id = uuidv4();
       return media
     });
     
@@ -361,7 +402,7 @@ export const Router =  initialize()
       reqFiles.forEach(file => filePathDict[file.originalname] = file);
     }
     let addedPicsArray: IDBEntry[] = [];
-    let addedPicsPromises: Promise<IDBEntry>[] = []
+    let addedPicsPromises: Promise<IDBEntry>[] = [];
     //looping through entries
     for (let i = 0; i < requestEntries.length; i++) {
       const { url, album, type, files, isHidden, optionalOverrideParams, stockOptionalOverrides, thumbnailFile, old_file } = requestEntries[i]; //remember to do .split('\n') and for each to get the stuff bla bla
@@ -428,12 +469,25 @@ export const Router =  initialize()
         
 
       if (stockOptionalOverrides.thumbnailFile.textField.value) {
-        specifiedThumbnail = await (new Utility()).noStatusDl(stockOptionalOverrides?.thumbnailFile?.textField?.value, this.settings.downloadFolder, 
+        specifiedThumbnail = await routesUtility.noStatusDl(stockOptionalOverrides?.thumbnailFile?.textField?.value, this.settings.downloadFolder, 
           `/saved_pictures_thumbnails/${album}`, {providedFileName: uuidv4()+'_thumbnail'})
       }
     }
     const multipleIntoOne: IDBEntry = {
-      album: album, id: uuidv4(), indexer:0, media: [], isHidden: !!isHidden, hasNSFW:false, date_added: (new Date()).getTime(), thumbnailFile: "",
+      album: album, id: uuidv4(), indexer: 0, media: [], isHidden: !!isHidden, hasNSFW:false, date_added: (new Date()).getTime(), thumbnailFile: "",
+    }
+    
+    if (newEntrySubmission.stockOptionalOverrides.addToExistingEntry.checkBox?.checkBoxValue && newEntrySubmission.stockOptionalOverrides.addToExistingEntry.textField?.value) {
+      const preExistingEntry = (await database.getEntriesInAlbumByNameAndFilter(album,{id: newEntrySubmission.stockOptionalOverrides.addToExistingEntry.textField?.value}) as undefined as IDBEntry[])[0];
+      if (preExistingEntry) { 
+        multipleIntoOne.id = newEntrySubmission.stockOptionalOverrides.addToExistingEntry.textField.value;
+        multipleIntoOne.indexer = preExistingEntry.indexer;
+        multipleIntoOne.media = preExistingEntry.media;
+        multipleIntoOne.isHidden = preExistingEntry.isHidden;
+        multipleIntoOne.hasNSFW = preExistingEntry.hasNSFW;
+        multipleIntoOne.date_added = preExistingEntry.date_added;
+        multipleIntoOne.thumbnailFile = preExistingEntry.thumbnailFile;
+      }
     }
     if (inputs) {
       for (let i = 0; i < inputs.length; i++) {
@@ -452,15 +506,19 @@ export const Router =  initialize()
             const customIDOBJ = {customId: stockOptionalOverridesPerEntry.addId.textField.value}
             entry.ids = entry.ids ? Object.assign(entry.ids, customIDOBJ) : customIDOBJ
           }
-
+          
           const dbEntry: IDBEntry = INewMediaItemToIDBEntry(entry, album, isHidden, {specifiedThumbnail: specifiedThumbnail})
+          
           multipleIntoOne.media.push(...dbEntry.media)
         }
       }
-      multipleIntoOne.thumbnailFile = specifiedThumbnail || multipleIntoOne.media[0]?.thumbnailFile,
-      multipleIntoOne.hasNSFW = !!multipleIntoOne.media.filter(media=>media.isNSFW).length,
+      multipleIntoOne.hasNSFW = !!multipleIntoOne.media.filter(media=>media.isNSFW).length;
       multipleIntoOne.media = mediaItemsSetIndex(multipleIntoOne.media);
       
+      if (!(newEntrySubmission.stockOptionalOverrides.addToExistingEntry.checkBox?.checkBoxValue && newEntrySubmission.stockOptionalOverrides.addToExistingEntry.textField?.value))
+        {
+          multipleIntoOne.thumbnailFile = specifiedThumbnail || multipleIntoOne.media[0]?.thumbnailFile;
+        };
       return await database.addEntry(album, multipleIntoOne, type).catch(console.log)
     }
   }

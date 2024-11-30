@@ -69,7 +69,7 @@ export class Logic {
             else resultantData.thumbnailURL = resultantData.media[resultantData.indexer].thumbnailFile
         }
 
-        if (resultantData?.media.length) return resultantData
+        if (resultantData?.media?.length) return resultantData
 
     }    
 

@@ -280,7 +280,9 @@ export class TypeORMInterface {
       initialFilterObject.tags.forEach(tag=> tagsQuery.push(Like(`%${tag}%`)));
       filterObject.media.tags = And(...tagsQuery);
     };
-    
+    if (initialFilterObject.id) {
+      filterObject.id = Equal(initialFilterObject.id);
+    }
     initialFilterObject.artists ? filterObject.artists = ArrayContains(initialFilterObject.artists) : undefined;
     (initialFilterObject.showHidden) ? undefined : filterObject.isHidden = Equal(false);
     (initialFilterObject.showNSFW ) ? undefined : filterObject.hasNSFW = Equal(false);
@@ -289,8 +291,8 @@ export class TypeORMInterface {
       const sortDictionary = {"Newest First": {date_added: "DESC"},
        "Oldest First": {date_added: "ASC"}};
        sortObj = sortDictionary[sortBy]
-    }
-    
+       sortObj.media = {index:"ASC"}
+      }
     return (await this.appDataSource.getRepository(this.entities[albumName]).find({relations: {
       media: true,
     }, where: filterObject, order: sortObj}))
@@ -312,16 +314,6 @@ export class TypeORMInterface {
   }
     
 
-  /**
-  * updateEntry
-  */
-  public updateEntry(albumName: string, entryOBJ: IDBEntry) {
-  
-    const newModelEntry = this.entities[albumName];
-    return this.appDataSource.manager.update(newModelEntry, {id:entryOBJ.id}, entryOBJ);
-    }
-  
-  
   /**
   * handleHidingPicturesInAlbum
   */
@@ -347,6 +339,35 @@ export class TypeORMInterface {
     
   }
   
+  /**
+   * editMediaItem
+   */
+  public editMediaItem(item: IMediaItem, newThumbnailFile: string | undefined) {
+    const newItem = item; // i know this doesnt create a new objcet, idrc rn
+    const mediaModel = this.entitiesMedia[item.album];
+    if (newThumbnailFile) {
+      newItem.thumbnailFile = newThumbnailFile;
+    }
+    return this.appDataSource.manager.update(mediaModel, {id: item.id}, newItem);
+    
+  }
+
+  public updateEntry(albumName: string, newEntryOBJ: IDBEntry) {
+    const convertedEntry = this.convertINewPicToIEntry(newEntryOBJ);
+    
+    const newModelEntry = this.entities[albumName];
+    
+    
+    const newEntry = new newModelEntry();
+    
+    for (const key in convertedEntry) {
+      if (Object.prototype.hasOwnProperty.call(convertedEntry, key)) {
+        newEntry[key] = convertedEntry[key];
+      }
+    }
+    
+    return this.appDataSource.manager.save(newEntry);
+  }
 
   /**
   * addPicture
@@ -368,7 +389,7 @@ export class TypeORMInterface {
         newEntry[key] = convertedEntry[key];
       }
     }
-
+    
     return this.appDataSource.manager.save(newEntry);
   }/* 
   public async up(queryRunner: QueryRunner): Promise<void> {

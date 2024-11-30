@@ -13,6 +13,7 @@ export interface ISizeCalculationResult extends ISize {
 
 
 export interface IMediaItem {
+    id: string;
     file: string;
     thumbnailFile?: string;
     isVideo: boolean;
@@ -140,7 +141,7 @@ export class IMedia implements IMediaItem {
     @Column()
     index:number;
     */
-    @ManyToOne((type) => Entry, (entry) => entry.media, { onDelete: 'CASCADE' ,createForeignKeyConstraints:false})
+    @ManyToOne((type) => Entry, (entry) => entry.media, { onUpdate:"CASCADE", onDelete: 'CASCADE' ,createForeignKeyConstraints:false})
     parentEntry: Entry;
 
     @Column()
@@ -204,7 +205,7 @@ export function albumDBClass(albumName: string) {
         @Column({nullable: true})
         hasVideo: boolean;
 
-        @OneToMany((type) => Media, (media) => media.parentEntry, {cascade:true ,eager:true, createForeignKeyConstraints:false})
+        @OneToMany((type) => Media, (media) => media.parentEntry, {cascade:true ,eager:true, createForeignKeyConstraints:false,})
         media: Media[];
         
         @Column()
@@ -259,7 +260,7 @@ export function albumDBClass(albumName: string) {
         @Column()
         index:number;
         */
-        @ManyToOne((type) => Entry, (entry) => entry.media, { onDelete: 'CASCADE' , createForeignKeyConstraints:false})
+        @ManyToOne((type) => Entry, (entry) => entry.media, { onUpdate:"CASCADE", onDelete: 'CASCADE' , createForeignKeyConstraints:false})
         parentEntry: Entry;
     
         @Column()

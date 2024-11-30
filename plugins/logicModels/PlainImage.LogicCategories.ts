@@ -33,7 +33,7 @@ export default class LogicModel implements ILogicModels {
           }
           else if (!(typeof input == "string")) { //process as a file not a link
             
-            let newPath = `${this.settings.downloadFolder}/saved_pictures/${album}/${ stockOptionalOverrides?.useProvidedFileName?.textField?.value ?? (input.path.substring(input.path.lastIndexOf("/") + 1))}`;
+            let newPath = `${this.settings.downloadFolder}/saved_pictures/${album}/${Date.now() + stockOptionalOverrides?.useProvidedFileName?.textField?.value ?? (input.path.substring(input.path.lastIndexOf("/") + 1))}`;
             this.utility.moveFile(input.path, newPath);
             newPath = newPath.substring(newPath.indexOf('/saved_pictures/'));
             const isVideo = input.mimetype.includes("video");
@@ -65,7 +65,9 @@ export default class LogicModel implements ILogicModels {
         const parsedTrueURL = url.includes("?") ? url.substring(0, url.indexOf('?')) : url;
 
         
-        const providedFileName = stockOptionalOverrides?.useProvidedFileName?.textField?.value ?? (parsedTrueURL.substring(parsedTrueURL.lastIndexOf('/') + 1, parsedTrueURL.lastIndexOf('.'))) + `- ${Date.now()}`
+        let providedFileName = stockOptionalOverrides?.useProvidedFileName?.textField?.value;
+
+        providedFileName = providedFileName ? providedFileName : (parsedTrueURL.substring(parsedTrueURL.lastIndexOf('/') + 1, parsedTrueURL.lastIndexOf('.'))) + ` - ${Date.now()}`;
         const providedFileExtension = parsedTrueURL.substring(parsedTrueURL.lastIndexOf('.') + 1)
         const path = await this.utility.downloadFromUrl(url, this.settings.downloadFolder, `/saved_pictures/${album}`, 
         requestTracker,

@@ -48,6 +48,7 @@ export interface IFilterObj {
     tags?: string[];
     showHidden?: boolean;
     showNSFW?: boolean;
+    id?: string;
 }
 
 export interface ITagsObject {
@@ -67,7 +68,8 @@ export interface IImageDataArray  {
     imageSize?: ISizeCalculationResult;
 }
 
-export interface IMediaItem  {
+export interface IMediaItem {
+    id: string;
     file: string;
     thumbnailFile?: string;
     isVideo: boolean;
@@ -268,6 +270,7 @@ export interface IMediaSubmitFormStockOverrides {
     addId: IParam;
     addTags: IParam;
     useProvidedFileName: IParam;
+    addToExistingEntry: IParam;
 }
 
 export interface ILogicCategory {
